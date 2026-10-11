@@ -39,7 +39,16 @@ function mbFetch<T>(path: string): Promise<T | null> {
 }
 
 interface MbLabelInfo { 'catalog-number'?: string | null; label?: { name?: string } | null }
-interface MbReleaseGroup { id: string; title: string; 'first-release-date'?: string; 'primary-type'?: string | null; score?: number; 'artist-credit'?: { name: string }[] }
+interface MbGenre { name: string; count: number }
+interface MbReleaseGroup {
+  id: string;
+  title: string;
+  'first-release-date'?: string;
+  'primary-type'?: string | null;
+  score?: number;
+  'artist-credit'?: { name: string; artist?: { id: string } }[];
+  genres?: MbGenre[];
+}
 interface MbRelease {
   id: string;
   title: string;
@@ -105,6 +114,35 @@ export async function searchReleaseGroup(artist: string, title: string): Promise
   return best
     ? { releaseGroupId: best.id, date: best['first-release-date'] || null, label: null, source: 'musicbrainz-busqueda' }
     : null;
+}
+
+const byVotes = (genres?: MbGenre[]) => [...(genres ?? [])].sort((a, b) => b.count - a.count).map((g) => g.name);
+
+async function artistGenres(artistId: string): Promise<string[]> {
+  const artist = await mbFetch<{ genres?: MbGenre[] }>(`artist/${artistId}?inc=genres`);
+  return byVotes(artist?.genres);
+}
+
+/**
+ * Géneros votados en MusicBrainz, de más a menos votado: los del disco y, si no tiene,
+ * los del artista principal. Sin release group, busca el artista por nombre exacto.
+ */
+export async function findGenres(releaseGroupId: string | null | undefined, artist: string): Promise<string[]> {
+  if (releaseGroupId) {
+    const group = await mbFetch<MbReleaseGroup>(`release-group/${releaseGroupId}?inc=genres+artist-credits`);
+    const own = byVotes(group?.genres);
+    if (own.length) return own;
+    const artistId = group?.['artist-credit']?.[0]?.artist?.id;
+    return artistId ? artistGenres(artistId) : [];
+  }
+
+  const name = primaryArtist(artist);
+  if (!name) return [];
+  const query = encodeURIComponent(`artist:${quote(name)}`);
+  const found = await mbFetch<{ artists?: { id: string; name: string; score?: number }[] }>(`artist?query=${query}&limit=5`);
+  // Solo si hay un único artista con ese nombre exacto: con homónimos no adivinamos.
+  const exact = (found?.artists ?? []).filter((a) => (a.score ?? 0) >= 95 && sameText(a.name, name));
+  return exact.length === 1 ? artistGenres(exact[0].id) : [];
 }
 
 export interface SpineScan {

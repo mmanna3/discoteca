@@ -181,6 +181,35 @@ button {
   line-height: 1;
 }
 
+.btn--luck {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #3b2a0c;
+  background:
+    linear-gradient(100deg, rgba(255, 255, 255, 0.35), transparent 35%, transparent 70%, rgba(255, 255, 255, 0.2)),
+    linear-gradient(180deg, var(--brass-1), var(--brass-2));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 245, 210, 0.6);
+}
+
+.btn--luck svg {
+  width: 18px;
+  height: 18px;
+}
+
+.btn--luck:hover:not(:disabled) svg {
+  animation: dice-wobble 0.5s ease-in-out;
+}
+
+@keyframes dice-wobble {
+  30% {
+    transform: rotate(-18deg);
+  }
+  70% {
+    transform: rotate(14deg);
+  }
+}
+
 .menu {
   position: relative;
 }
@@ -395,6 +424,53 @@ main {
 
 .slot--out {
   visibility: hidden;
+}
+
+/* La ruleta de "Toca toca": el lomo que le toca se asoma e ilumina. */
+.slot--lit {
+  transform: translateY(-16px);
+  filter: brightness(1.25);
+  z-index: 1;
+  transition-duration: 0.12s;
+}
+
+.slot--lit .spine {
+  box-shadow:
+    0 0 0 2px var(--brass-1),
+    0 0 18px 4px rgba(230, 197, 126, 0.55);
+}
+
+/* Separador de sección, como los cartones de una disquería: sobresale por arriba de los discos. */
+.divider {
+  flex: none;
+  position: relative;
+  align-self: flex-end;
+  width: var(--divider-w);
+  height: calc(var(--spine-h) + 16px);
+  margin: 0 3px;
+  border-radius: 6px 6px 1px 1px;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.18), transparent 25%, transparent 75%, rgba(0, 0, 0, 0.22)),
+    linear-gradient(180deg, #efe3c4, #d9c79c);
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.5);
+  color: #3b2a14;
+  overflow: hidden;
+}
+
+.divider span {
+  position: absolute;
+  inset: 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  writing-mode: vertical-rl;
+  font-size: calc(var(--spine-w) * 0.62);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .slot--new {
@@ -1474,6 +1550,39 @@ main {
 
 .dialog__pending {
   opacity: 0.7;
+}
+
+.genre-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.genre-chip {
+  padding: 7px 13px;
+  border: 1.5px solid rgba(42, 30, 22, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--ink);
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.genre-chip:hover {
+  border-color: var(--ink);
+}
+
+.genre-chip.is-active {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 600;
+}
+
+.genre-custom {
+  margin-top: 14px;
 }
 
 @media (max-width: 639px) {

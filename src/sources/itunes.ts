@@ -2,12 +2,14 @@
 
 import { cleanTitle, normalize, primaryArtist, sameText } from './text';
 
-interface ItunesAlbum { collectionName: string; artistName: string; releaseDate?: string; copyright?: string }
+interface ItunesAlbum { collectionName: string; artistName: string; releaseDate?: string; copyright?: string; primaryGenreName?: string }
 
 export interface ItunesMatch {
   date: string | null;
   /** Ej.: "℗ 2004 Warner Records Inc." — es de la edición digital, no del original. */
   copyright: string | null;
+  /** Ej.: "Rap", "Rock y Alternativo", "Latin" (este último no dice nada). */
+  genre: string | null;
   source: 'itunes';
 }
 
@@ -23,6 +25,11 @@ export async function searchItunes(artist: string, title: string): Promise<Itune
     (r) => normalize(r.artistName) === normalize(name) && sameText(cleanTitle(r.collectionName), clean),
   );
   return match
-    ? { date: match.releaseDate?.slice(0, 10) ?? null, copyright: match.copyright ?? null, source: 'itunes' }
+    ? {
+        date: match.releaseDate?.slice(0, 10) ?? null,
+        copyright: match.copyright ?? null,
+        genre: match.primaryGenreName ?? null,
+        source: 'itunes',
+      }
     : null;
 }

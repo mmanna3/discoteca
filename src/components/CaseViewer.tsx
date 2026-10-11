@@ -3,12 +3,16 @@ import { formatDuration, formatTotal } from '../lib/format';
 import { spotifyAppUrl, spotifyWebUrl } from '../lib/spotify';
 import type { Album } from '../lib/types';
 import { Spine } from './Spine';
+import { GenrePicker } from './GenrePicker';
 import { SpinePicker } from './SpinePicker';
 
 interface Props {
   album: Album;
   position: string;
   readOnly?: boolean;
+  knownGenres?: string[];
+  /** "Toca toca, la suerte es loca": salta a otro disco al azar. */
+  onRandom?: () => void;
   onClose: () => void;
   onPrev: () => void;
   onNext: () => void;
@@ -24,12 +28,24 @@ function caseSize() {
 
 type Pose = 'entering' | 'front' | 'back';
 
-export function CaseViewer({ album, position, readOnly = false, onClose, onPrev, onNext, onRemove, onUpdate }: Props) {
+export function CaseViewer({
+  album,
+  position,
+  readOnly = false,
+  knownGenres = [],
+  onRandom,
+  onClose,
+  onPrev,
+  onNext,
+  onRemove,
+  onUpdate,
+}: Props) {
   const [size, setSize] = useState(caseSize);
   const [pose, setPose] = useState<Pose>('entering');
   const [dragX, setDragX] = useState(0);
   const [confirming, setConfirming] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [pickingGenre, setPickingGenre] = useState(false);
   const drag = useRef<{ x: number; y: number; id: number } | null>(null);
 
   // Cada disco nuevo entra mostrando el lomo y gira hasta la tapa.
@@ -37,6 +53,7 @@ export function CaseViewer({ album, position, readOnly = false, onClose, onPrev,
     setPose('entering');
     setConfirming(false);
     setPicking(false);
+    setPickingGenre(false);
     const frame = requestAnimationFrame(() => requestAnimationFrame(() => setPose('front')));
     return () => cancelAnimationFrame(frame);
   }, [album.id]);
@@ -48,7 +65,7 @@ export function CaseViewer({ album, position, readOnly = false, onClose, onPrev,
   }, []);
 
   useEffect(() => {
-    if (picking) return;
+    if (picking || pickingGenre) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
       else if (e.key === 'ArrowLeft') onPrev();
@@ -60,7 +77,7 @@ export function CaseViewer({ album, position, readOnly = false, onClose, onPrev,
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, onPrev, onNext, picking]);
+  }, [onClose, onPrev, onNext, picking, pickingGenre]);
 
   const flip = () => setPose((p) => (p === 'back' ? 'front' : 'back'));
 
@@ -176,8 +193,8 @@ export function CaseViewer({ album, position, readOnly = false, onClose, onPrev,
         <div className="viewer__info">
           <div className="viewer__artist">{album.artist}</div>
           <div className="viewer__title">{album.title}</div>
-          {(album.year || album.label) && (
-            <div className="viewer__meta">{[album.year, album.label].filter(Boolean).join(' · ')}</div>
+          {(album.year || album.label || album.genre) && (
+            <div className="viewer__meta">{[album.year, album.label, album.genre].filter(Boolean).join(' · ')}</div>
           )}
         </div>
 
@@ -201,6 +218,16 @@ export function CaseViewer({ album, position, readOnly = false, onClose, onPrev,
           <button type="button" onClick={flip}>
             {pose === 'back' ? 'Ver tapa' : 'Ver contratapa'}
           </button>
+          {onRandom && (
+            <button type="button" onClick={onRandom}>
+              Otro al azar
+            </button>
+          )}
+          {!readOnly && (
+            <button type="button" onClick={() => setPickingGenre(true)}>
+              {album.genre ? `Género: ${album.genre}` : 'Elegir género'}
+            </button>
+          )}
           {!readOnly && (
             <button type="button" onClick={() => setPicking(true)}>
               Cambiar lomo
@@ -226,6 +253,9 @@ export function CaseViewer({ album, position, readOnly = false, onClose, onPrev,
           )}
         </div>
       </div>
+      {pickingGenre && !readOnly && (
+        <GenrePicker album={album} knownGenres={knownGenres} onUpdate={onUpdate} onClose={() => setPickingGenre(false)} />
+      )}
       {picking && !readOnly && <SpinePicker album={album} onUpdate={onUpdate} onClose={() => setPicking(false)} />}
     </>
   );

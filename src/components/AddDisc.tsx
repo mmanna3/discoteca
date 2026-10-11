@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { analyzeCover, parseRgb, readableTextOn } from '../lib/colors';
-import { fetchMetadata } from '../lib/metadata';
+import { fetchGenre, fetchMetadata } from '../lib/metadata';
 import { lookupAlbum } from '../lib/spotify';
 import type { Album } from '../lib/types';
 import { Spine } from './Spine';
@@ -71,6 +71,15 @@ export function AddDisc({ initialValue, existingIds, onSave, onShow, onClose }: 
     setState((s) =>
       s.kind === 'preview' && s.album.id === next.album.id
         ? { ...s, metaDone: true, album: { ...s.album, ...usable } }
+        : s,
+    );
+
+    if (next.artistMissing) return;
+    const genre = await fetchGenre({ ...next.album, releaseGroupId: meta?.releaseGroupId ?? null });
+    if (!genre || id !== request.current) return;
+    setState((s) =>
+      s.kind === 'preview' && s.album.id === next.album.id && s.album.genreSource !== 'manual'
+        ? { ...s, album: { ...s.album, ...genre } }
         : s,
     );
   };
@@ -165,6 +174,7 @@ export function AddDisc({ initialValue, existingIds, onSave, onShow, onClose }: 
                 {[
                   preview.album.year,
                   preview.album.label,
+                  preview.album.genre,
                   preview.album.tracks.length > 0 && `${preview.album.tracks.length} temas`,
                 ]
                   .filter(Boolean)

@@ -31,6 +31,11 @@ describe('sortAlbums', () => {
     expect(sortAlbums(withYears, 'anio').map((a) => a.id)).toEqual(['4', '1', '3', '2']);
   });
 
+  it('ordena por género (los sin género al final) y dentro de cada uno por artista', () => {
+    const withGenres = albums.map((a) => ({ ...a, genre: a.id === '2' || a.id === '3' ? 'Rock' : a.id === '1' ? 'Pop' : null }));
+    expect(sortAlbums(withGenres, 'genero').map((a) => a.id)).toEqual(['1', '3', '2', '4']);
+  });
+
   it('ordena por recientes', () => {
     expect(sortAlbums(albums, 'recientes').map((a) => a.id)).toEqual(['4', '1', '3', '2']);
   });

@@ -1,10 +1,19 @@
 import { useEffect, useRef } from 'react';
 import { searchItunes } from '../sources/itunes';
-import { findBySpotifyId, findSpineScans, searchReleaseGroup, type ReleaseGroupMatch, type SpineScan } from '../sources/musicbrainz';
+import { firstFamily, genreFamily } from '../sources/genres';
+import {
+  findBySpotifyId,
+  findGenres,
+  findSpineScans,
+  searchReleaseGroup,
+  type ReleaseGroupMatch,
+  type SpineScan,
+} from '../sources/musicbrainz';
 import { yearOf } from '../sources/text';
 import type { Album } from './types';
 
 export type MetaPatch = Pick<Album, 'year' | 'releaseDate' | 'label' | 'releaseGroupId' | 'metaSource' | 'metaFetchedAt'>;
+export type GenrePatch = Pick<Album, 'genre' | 'genreSource' | 'genreFetchedAt'>;
 
 /**
  * Año original y sello: 1) MusicBrainz por el link de Spotify (exacto) → 2) MusicBrainz por
@@ -32,6 +41,31 @@ export async function fetchMetadata(album: Pick<Album, 'id' | 'artist' | 'title'
   return mbFailed ? null : { ...base, year: null, releaseDate: null, metaSource: mb?.source ?? null };
 }
 
+/**
+ * Familia de género: 1) géneros votados en MusicBrainz (del disco o, si no tiene, del artista)
+ * → 2) género de iTunes, si coincide exactamente el disco. Si nada encaja en una familia, queda
+ * vacío para elegirlo a mano. Devuelve null si no se pudo consultar ninguna fuente.
+ */
+export async function fetchGenre(
+  album: Pick<Album, 'artist' | 'title' | 'releaseGroupId'>,
+): Promise<GenrePatch | null> {
+  let failures = 0;
+  try {
+    const family = firstFamily(await findGenres(album.releaseGroupId, album.artist));
+    if (family) return { genre: family, genreSource: 'musicbrainz', genreFetchedAt: Date.now() };
+  } catch {
+    failures++;
+  }
+  try {
+    const itunes = album.artist ? await searchItunes(album.artist, album.title) : null;
+    const family = itunes?.genre ? genreFamily(itunes.genre) : null;
+    if (family) return { genre: family, genreSource: 'itunes', genreFetchedAt: Date.now() };
+  } catch {
+    failures++;
+  }
+  return failures === 2 ? null : { genre: null, genreSource: null, genreFetchedAt: Date.now() };
+}
+
 export async function fetchSpineScans(releaseGroupId: string): Promise<SpineScan[] | null> {
   try {
     return await findSpineScans(releaseGroupId);
@@ -40,7 +74,10 @@ export async function fetchSpineScans(releaseGroupId: string): Promise<SpineScan
   }
 }
 
-/** Completa de a uno los discos que todavía no tienen metadatos (p. ej. los guardados antes de esta función). */
+/**
+ * Completa de a uno los discos a los que les faltan datos: primero año y sello, después el
+ * género (que necesita el release group). Un género elegido a mano no se toca.
+ */
 export function useMetadataBackfill(
   albums: Album[],
   update: (id: string, patch: Partial<Album>) => void,
@@ -51,10 +88,15 @@ export function useMetadataBackfill(
 
   useEffect(() => {
     if (!enabled || inFlight.current) return;
-    const next = albums.find((a) => a.metaFetchedAt === undefined && !failed.current.has(a.id));
+    const pending = albums.filter((a) => !failed.current.has(a.id));
+    const needsMeta = pending.find((a) => a.metaFetchedAt === undefined);
+    const needsGenre = pending.find((a) => a.genreFetchedAt === undefined && a.genreSource !== 'manual');
+    const next = needsMeta ?? needsGenre;
     if (!next) return;
+
     inFlight.current = next.id;
-    void fetchMetadata(next).then((patch) => {
+    const task: Promise<Partial<Album> | null> = needsMeta ? fetchMetadata(next) : fetchGenre(next);
+    void task.then((patch) => {
       inFlight.current = null;
       if (patch) update(next.id, patch);
       else failed.current.add(next.id);

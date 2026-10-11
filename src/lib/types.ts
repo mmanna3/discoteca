@@ -52,6 +52,12 @@ export interface Album {
   releaseGroupId?: string | null;
   metaSource?: string | null;
   metaFetchedAt?: number;
+
+  /** Familia de género ("Rock", "Cantautor"…). Si la elegiste a mano, no se vuelve a pisar. */
+  genre?: string | null;
+  genreSource?: 'manual' | 'musicbrainz' | 'itunes' | null;
+  /** Ausente = todavía no se buscó. */
+  genreFetchedAt?: number;
 }
 
-export type SortMode = 'artista' | 'anio' | 'recientes' | 'color';
+export type SortMode = 'artista' | 'anio' | 'genero' | 'recientes' | 'color';

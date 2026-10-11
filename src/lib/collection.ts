@@ -51,6 +51,9 @@ export function artistSortKey(artist: string): string {
 const byYear = (a: Album, b: Album) => (a.year ?? 9999) - (b.year ?? 9999);
 const byArtist = (a: Album, b: Album) => artistSortKey(a.artist).localeCompare(artistSortKey(b.artist), 'es');
 const byTitle = (a: Album, b: Album) => a.title.localeCompare(b.title, 'es');
+/** Los discos sin género van al final, en su propio grupo. */
+const byGenre = (a: Album, b: Album) =>
+  Number(!a.genre) - Number(!b.genre) || (a.genre ?? '').localeCompare(b.genre ?? '', 'es');
 
 export function sortAlbums(albums: Album[], mode: SortMode): Album[] {
   const list = [...albums];
@@ -60,6 +63,8 @@ export function sortAlbums(albums: Album[], mode: SortMode): Album[] {
       return list.sort((a, b) => byArtist(a, b) || byYear(a, b) || byTitle(a, b));
     case 'anio':
       return list.sort((a, b) => byYear(a, b) || byArtist(a, b) || byTitle(a, b));
+    case 'genero':
+      return list.sort((a, b) => byGenre(a, b) || byArtist(a, b) || byYear(a, b) || byTitle(a, b));
     case 'recientes':
       return list.sort((a, b) => b.addedAt - a.addedAt);
     case 'color':
@@ -79,7 +84,7 @@ export function useCollection({ canEdit, onMigrated }: { canEdit: boolean; onMig
   const [sort, setSort] = useState<SortMode>(() => {
     try {
       const saved = localStorage.getItem(SORT_KEY);
-      return saved === 'anio' || saved === 'recientes' || saved === 'color' ? saved : 'artista';
+      return saved === 'anio' || saved === 'genero' || saved === 'recientes' || saved === 'color' ? saved : 'artista';
     } catch {
       return 'artista';
     }

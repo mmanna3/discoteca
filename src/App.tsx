@@ -12,9 +12,12 @@ import type { Album, SortMode } from './lib/types';
 const SORTS: { value: SortMode; label: string }[] = [
   { value: 'artista', label: 'Artista' },
   { value: 'anio', label: 'Año' },
+  { value: 'genero', label: 'Género' },
   { value: 'recientes', label: 'Recientes' },
   { value: 'color', label: 'Color' },
 ];
+
+const sectionByGenre = (album: Album) => album.genre ?? 'Sin género';
 
 function signInErrorMessage(error: unknown): string | null {
   const code = (error as { code?: string })?.code ?? '';
@@ -51,6 +54,44 @@ export function App() {
   const openIndex = albums.findIndex((a) => a.id === openId);
   const openAlbum = openIndex >= 0 ? albums[openIndex] : null;
   const existingIds = useMemo(() => new Set(albums.map((a) => a.id)), [albums]);
+  const knownGenres = useMemo(
+    () => [...new Set(albums.map((a) => a.genre).filter((g): g is string => !!g))],
+    [albums],
+  );
+
+  // "Toca toca, la suerte es loca": una ruleta recorre los lomos, se va frenando y abre el elegido.
+  const [litId, setLitId] = useState<string | null>(null);
+  const rolling = useRef(false);
+  const lastLucky = useRef<string | null>(null);
+  const randomAlbum = (exclude: string | null) => {
+    const pool = albums.length > 1 ? albums.filter((a) => a.id !== exclude) : albums;
+    return pool[Math.floor(Math.random() * pool.length)];
+  };
+  const tocaToca = () => {
+    if (albums.length === 0 || rolling.current) return;
+    const chosen = randomAlbum(lastLucky.current);
+    lastLucky.current = chosen.id;
+    if (albums.length < 3 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setOpenId(chosen.id);
+      return;
+    }
+    rolling.current = true;
+    setOpenId(null);
+    const steps = 12;
+    let at = 0;
+    let previous: string | null = null;
+    for (let i = 0; i < steps; i++) {
+      at += 45 + i * i * 1.6;
+      const id: string = i === steps - 1 ? chosen.id : randomAlbum(previous).id;
+      previous = id;
+      window.setTimeout(() => setLitId(id), at);
+    }
+    window.setTimeout(() => {
+      setLitId(null);
+      rolling.current = false;
+      setOpenId(chosen.id);
+    }, at + 450);
+  };
 
   // Pegar un link de Spotify en cualquier parte de la página abre "Guardar un disco".
   useEffect(() => {
@@ -143,6 +184,17 @@ export function App() {
               </button>
             ))}
           </div>
+          <button type="button" className="btn btn--luck" onClick={tocaToca} disabled={count === 0}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="4" fill="none" stroke="currentColor" strokeWidth="2" />
+              <circle cx="8" cy="8" r="1.6" fill="currentColor" />
+              <circle cx="16" cy="8" r="1.6" fill="currentColor" />
+              <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+              <circle cx="8" cy="16" r="1.6" fill="currentColor" />
+              <circle cx="16" cy="16" r="1.6" fill="currentColor" />
+            </svg>
+            Toca toca, la suerte es loca
+          </button>
           {canEdit && (
             <button type="button" className="btn" onClick={() => setAdding({ value: '' })}>
               + Guardar disco
@@ -227,6 +279,8 @@ export function App() {
           loading={status === 'cargando'}
           openId={openAlbum?.id ?? null}
           newId={newId}
+          highlightId={litId}
+          sectionOf={sort === 'genero' ? sectionByGenre : undefined}
           onOpen={setOpenId}
           onAdd={canEdit ? () => setAdding({ value: '' }) : undefined}
         />
@@ -242,6 +296,8 @@ export function App() {
           album={openAlbum}
           position={`${openIndex + 1} de ${albums.length}`}
           readOnly={!canEdit}
+          knownGenres={knownGenres}
+          onRandom={albums.length > 1 ? () => setOpenId(randomAlbum(openAlbum.id).id) : undefined}
           onClose={() => setOpenId(null)}
           onPrev={() => step(-1)}
           onNext={() => step(1)}
