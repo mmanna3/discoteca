@@ -8,6 +8,7 @@ import { SpinePicker } from './SpinePicker';
 interface Props {
   album: Album;
   position: string;
+  readOnly?: boolean;
   onClose: () => void;
   onPrev: () => void;
   onNext: () => void;
@@ -23,7 +24,7 @@ function caseSize() {
 
 type Pose = 'entering' | 'front' | 'back';
 
-export function CaseViewer({ album, position, onClose, onPrev, onNext, onRemove, onUpdate }: Props) {
+export function CaseViewer({ album, position, readOnly = false, onClose, onPrev, onNext, onRemove, onUpdate }: Props) {
   const [size, setSize] = useState(caseSize);
   const [pose, setPose] = useState<Pose>('entering');
   const [dragX, setDragX] = useState(0);
@@ -200,13 +201,15 @@ export function CaseViewer({ album, position, onClose, onPrev, onNext, onRemove,
           <button type="button" onClick={flip}>
             {pose === 'back' ? 'Ver tapa' : 'Ver contratapa'}
           </button>
-          <button type="button" onClick={() => setPicking(true)}>
-            Cambiar lomo
-          </button>
+          {!readOnly && (
+            <button type="button" onClick={() => setPicking(true)}>
+              Cambiar lomo
+            </button>
+          )}
           <a href={spotifyWebUrl(album.id)} target="_blank" rel="noreferrer">
             Abrir en la web
           </a>
-          {confirming ? (
+          {readOnly ? null : confirming ? (
             <span className="viewer__confirm">
               ¿Sacarlo de la discoteca?
               <button type="button" className="danger" onClick={onRemove}>
@@ -223,7 +226,7 @@ export function CaseViewer({ album, position, onClose, onPrev, onNext, onRemove,
           )}
         </div>
       </div>
-      {picking && <SpinePicker album={album} onUpdate={onUpdate} onClose={() => setPicking(false)} />}
+      {picking && !readOnly && <SpinePicker album={album} onUpdate={onUpdate} onClose={() => setPicking(false)} />}
     </>
   );
 }

@@ -4,10 +4,12 @@ import { Spine } from './Spine';
 
 interface Props {
   albums: Album[];
+  loading?: boolean;
   openId: string | null;
   newId: string | null;
   onOpen: (id: string) => void;
-  onAdd: () => void;
+  /** Ausente en modo lectura. */
+  onAdd?: () => void;
 }
 
 const MIN_SHELVES = 3;
@@ -18,7 +20,7 @@ function spineSize(width: number) {
   return width < 640 ? { w: 19, h: 200 } : { w: 23, h: 250 };
 }
 
-export function Cabinet({ albums, openId, newId, onOpen, onAdd }: Props) {
+export function Cabinet({ albums, loading = false, openId, newId, onOpen, onAdd }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [innerWidth, setInnerWidth] = useState(0);
 
@@ -60,12 +62,17 @@ export function Cabinet({ albums, openId, newId, onOpen, onAdd }: Props) {
                     <Spine album={album} />
                   </button>
                 ))}
-                {albums.length === 0 && i === 0 && (
-                  <button type="button" className="shelf__empty" onClick={onAdd}>
-                    <span>La discoteca está vacía.</span>
-                    <span>Pegá el link de un álbum de Spotify para guardar el primero.</span>
-                  </button>
-                )}
+                {albums.length === 0 && !loading && i === 0 &&
+                  (onAdd ? (
+                    <button type="button" className="shelf__empty" onClick={onAdd}>
+                      <span>La discoteca está vacía.</span>
+                      <span>Pegá el link de un álbum de Spotify para guardar el primero.</span>
+                    </button>
+                  ) : (
+                    <div className="shelf__empty">
+                      <span>La discoteca está vacía.</span>
+                    </div>
+                  ))}
               </div>
               <div className="shelf__board" />
             </div>

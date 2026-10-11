@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AddDisc } from './components/AddDisc';
 import { Cabinet } from './components/Cabinet';
 import { CaseViewer } from './components/CaseViewer';
+import { OWNER_UID } from './config';
 import { parseCollection, useCollection } from './lib/collection';
+import { signIn, signOutUser, useUser } from './lib/firebase';
 import { useMetadataBackfill } from './lib/metadata';
 import { looksLikeSpotify } from './lib/spotify';
 import type { Album, SortMode } from './lib/types';
@@ -14,13 +16,35 @@ const SORTS: { value: SortMode; label: string }[] = [
   { value: 'color', label: 'Color' },
 ];
 
+function signInErrorMessage(error: unknown): string | null {
+  const code = (error as { code?: string })?.code ?? '';
+  if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return null;
+  if (code === 'auth/unauthorized-domain') return 'Este dominio no está autorizado en Firebase Authentication';
+  if (code === 'auth/operation-not-allowed') return 'Falta habilitar el acceso con Google en Firebase';
+  return 'No pude iniciar sesión';
+}
+
 export function App() {
-  const { albums, count, sort, setSort, add, remove, update, importMany } = useCollection();
-  useMetadataBackfill(albums, update);
+  const user = useUser();
+  // Sin OWNER_UID configurado la discoteca vive en este navegador y se puede editar sin cuenta.
+  const canEdit = !OWNER_UID || (!!user && user.uid === OWNER_UID);
+
+  const [toast, setToast] = useState<string | null>(null);
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast((t) => (t === message ? null : t)), 3600);
+  }, []);
+  const onMigrated = useCallback(
+    (n: number) => showToast(`Subí a la nube los ${n} ${n === 1 ? 'disco' : 'discos'} de este navegador`),
+    [showToast],
+  );
+
+  const { albums, count, status, sort, setSort, add, remove, update, importMany } = useCollection({ canEdit, onMigrated });
+  useMetadataBackfill(albums, update, canEdit);
+
   const [openId, setOpenId] = useState<string | null>(null);
   const [adding, setAdding] = useState<{ value: string } | null>(null);
   const [newId, setNewId] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -28,13 +52,9 @@ export function App() {
   const openAlbum = openIndex >= 0 ? albums[openIndex] : null;
   const existingIds = useMemo(() => new Set(albums.map((a) => a.id)), [albums]);
 
-  const showToast = useCallback((message: string) => {
-    setToast(message);
-    window.setTimeout(() => setToast((t) => (t === message ? null : t)), 3200);
-  }, []);
-
   // Pegar un link de Spotify en cualquier parte de la página abre "Guardar un disco".
   useEffect(() => {
+    if (!canEdit) return;
     const onPaste = (e: ClipboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (adding || target?.closest('input, textarea')) return;
@@ -47,7 +67,7 @@ export function App() {
     };
     window.addEventListener('paste', onPaste);
     return () => window.removeEventListener('paste', onPaste);
-  }, [adding]);
+  }, [adding, canEdit]);
 
   useEffect(() => {
     document.body.classList.toggle('locked', !!openAlbum || !!adding);
@@ -66,6 +86,16 @@ export function App() {
     showToast(`Guardaste “${album.title}”`);
   };
 
+  const login = async () => {
+    setMenuOpen(false);
+    try {
+      await signIn();
+    } catch (error) {
+      const message = signInErrorMessage(error);
+      if (message) showToast(message);
+    }
+  };
+
   const exportCollection = () => {
     const data = JSON.stringify({ version: 1, exportado: new Date().toISOString(), discos: albums }, null, 2);
     const url = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
@@ -81,10 +111,10 @@ export function App() {
     try {
       const parsed = parseCollection(JSON.parse(await file.text()));
       if (!parsed) throw new Error();
-      importMany(parsed);
+      await importMany(parsed);
       showToast(`Importé ${parsed.length} ${parsed.length === 1 ? 'disco' : 'discos'}`);
     } catch {
-      showToast('Ese archivo no parece una copia de la discoteca');
+      showToast('No pude importar ese archivo');
     }
   };
 
@@ -113,9 +143,16 @@ export function App() {
               </button>
             ))}
           </div>
-          <button type="button" className="btn" onClick={() => setAdding({ value: '' })}>
-            + Guardar disco
-          </button>
+          {canEdit && (
+            <button type="button" className="btn" onClick={() => setAdding({ value: '' })}>
+              + Guardar disco
+            </button>
+          )}
+          {user === null && (
+            <button type="button" className="btn btn--ghost" onClick={login}>
+              Entrar
+            </button>
+          )}
           <div className="menu">
             <button
               type="button"
@@ -133,15 +170,28 @@ export function App() {
                   <button type="button" onClick={exportCollection} disabled={count === 0}>
                     Exportar copia (JSON)
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      fileRef.current?.click();
-                    }}
-                  >
-                    Importar copia…
-                  </button>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        fileRef.current?.click();
+                      }}
+                    >
+                      Importar copia…
+                    </button>
+                  )}
+                  {user && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        void signOutUser();
+                      }}
+                    >
+                      Salir <span className="menu__hint">{user.email}</span>
+                    </button>
+                  )}
                 </div>
               </>
             )}
@@ -160,23 +210,38 @@ export function App() {
         </div>
       </header>
 
+      {!OWNER_UID && user && (
+        <div className="notice">
+          Para guardar la discoteca en Firebase, configurá este UID como dueño en <code>src/config.ts</code> y{' '}
+          <code>firestore.rules</code>: <code className="notice__uid">{user.uid}</code>
+        </div>
+      )}
+      {OWNER_UID && user && !canEdit && (
+        <div className="notice">Entraste como {user.email}. Esta discoteca no es tuya: la ves en modo lectura.</div>
+      )}
+      {status === 'error' && <div className="notice notice--error">No pude leer la discoteca de la base de datos.</div>}
+
       <main>
         <Cabinet
           albums={albums}
+          loading={status === 'cargando'}
           openId={openAlbum?.id ?? null}
           newId={newId}
           onOpen={setOpenId}
-          onAdd={() => setAdding({ value: '' })}
+          onAdd={canEdit ? () => setAdding({ value: '' }) : undefined}
         />
-        <p className="footnote">
-          Tip: copiá el link de un álbum en Spotify y pegalo (⌘V) en cualquier lugar de la página.
-        </p>
+        {canEdit && (
+          <p className="footnote">
+            Tip: copiá el link de un álbum en Spotify y pegalo (⌘V) en cualquier lugar de la página.
+          </p>
+        )}
       </main>
 
       {openAlbum && (
         <CaseViewer
           album={openAlbum}
           position={`${openIndex + 1} de ${albums.length}`}
+          readOnly={!canEdit}
           onClose={() => setOpenId(null)}
           onPrev={() => step(-1)}
           onNext={() => step(1)}
@@ -189,7 +254,7 @@ export function App() {
         />
       )}
 
-      {adding && (
+      {adding && canEdit && (
         <AddDisc
           initialValue={adding.value}
           existingIds={existingIds}

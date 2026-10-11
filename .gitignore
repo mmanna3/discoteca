@@ -1,4 +1,7 @@
 node_modules
 dist
 .vercel
+.wrangler
+.firebase
+firebase-debug.log
 .DS_Store

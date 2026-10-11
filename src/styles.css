@@ -225,6 +225,40 @@ button {
   cursor: default;
 }
 
+.menu__hint {
+  display: block;
+  font-size: 12px;
+  opacity: 0.55;
+}
+
+.notice {
+  max-width: 1140px;
+  margin: 0 auto 14px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: rgba(243, 234, 216, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(243, 234, 216, 0.15);
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(243, 234, 216, 0.85);
+}
+
+.notice--error {
+  background: rgba(255, 120, 100, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 140, 120, 0.35);
+}
+
+.notice code {
+  font-size: 13px;
+}
+
+.notice__uid {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  user-select: all;
+}
+
 /* ───────────── El mueble ───────────── */
 
 main {

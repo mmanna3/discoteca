@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
-import type { SpineScan } from '../../server/musicbrainz';
+import type { SpineScan } from '../sources/musicbrainz';
 import { fetchSpineScans } from '../lib/metadata';
 import type { Album, ScannedSpine } from '../lib/types';
 import { Spine } from './Spine';

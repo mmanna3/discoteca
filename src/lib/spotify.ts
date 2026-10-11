@@ -1,10 +1,16 @@
-import type { AlbumPayload } from '../../api/album';
+import type { AlbumPayload } from '../sources/spotifyEmbed';
 
 export type LookupResult =
   | { ok: true; album: AlbumPayload; artistMissing: boolean }
   | { ok: false; error: string };
 
 const ALBUM_ID = /^[A-Za-z0-9]{22}$/;
+
+/**
+ * Lector del embed de Spotify (necesita servidor porque esa página no tiene CORS).
+ * Local: middleware de Vite. Producción: el Cloudflare Worker (VITE_ALBUM_API en .env.production).
+ */
+const ALBUM_API = import.meta.env.VITE_ALBUM_API || '/api/album';
 
 /** Acepta links de open.spotify.com (con o sin /intl-xx/), URIs spotify:album:… o el ID pelado. */
 export function parseAlbumId(input: string): string | null {
@@ -70,7 +76,7 @@ export async function lookupAlbum(input: string): Promise<LookupResult> {
 
   const query = id ? `id=${id}` : `url=${encodeURIComponent(input.trim())}`;
   try {
-    const res = await fetch(`/api/album?${query}`);
+    const res = await fetch(`${ALBUM_API}?${query}`);
     if (res.ok) {
       const album: AlbumPayload = await res.json();
       return { ok: true, album, artistMissing: !album.artist };

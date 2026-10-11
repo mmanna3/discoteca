@@ -1,10 +1,9 @@
-// MusicBrainz (metadatos) y Cover Art Archive (escaneos). Sin claves; MusicBrainz pide
-// un User-Agent identificable y como máximo una consulta por segundo.
+// MusicBrainz (metadatos) y Cover Art Archive (escaneos). Sin claves y con CORS abierto: se
+// consultan directo desde el navegador. MusicBrainz pide como máximo una consulta por segundo.
 
-import { cleanTitle, normalize, primaryArtist, sameText } from './text.js';
+import { cleanTitle, normalize, primaryArtist, sameText } from './text';
 
 const MB = 'https://musicbrainz.org/ws/2';
-export const USER_AGENT = 'Discoteca/0.1 (proyecto personal)';
 
 let queue: Promise<unknown> = Promise.resolve();
 let lastCall = 0;
@@ -23,7 +22,7 @@ function mbFetch<T>(path: string): Promise<T | null> {
       if (wait > 0) await sleep(wait);
       lastCall = Date.now();
       const res = await fetch(`${MB}/${path}${path.includes('?') ? '&' : '?'}fmt=json`, {
-        headers: { 'user-agent': USER_AGENT, accept: 'application/json' },
+        headers: { accept: 'application/json' },
       });
       if (res.status === 404) return null;
       if (res.ok) return (await res.json()) as T;
@@ -128,7 +127,7 @@ const https = (url: string) => url.replace(/^http:/, 'https:');
 async function caaImages(releaseId: string): Promise<CaaImage[]> {
   try {
     const res = await fetch(`https://coverartarchive.org/release/${releaseId}`, {
-      headers: { 'user-agent': USER_AGENT, accept: 'application/json' },
+      headers: { accept: 'application/json' },
     });
     return res.ok ? ((await res.json()) as { images: CaaImage[] }).images : [];
   } catch {

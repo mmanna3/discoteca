@@ -1,6 +1,6 @@
 // iTunes Search API: pública, sin clave y con CORS abierto (la usa también el navegador).
 
-import { cleanTitle, normalize, primaryArtist, sameText } from './text.js';
+import { cleanTitle, normalize, primaryArtist, sameText } from './text';
 
 interface ItunesAlbum { collectionName: string; artistName: string; releaseDate?: string; copyright?: string }
 

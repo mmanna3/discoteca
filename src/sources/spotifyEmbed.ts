@@ -1,6 +1,7 @@
 // Lee los datos reales de un álbum desde la página pública del embed de Spotify.
 // No requiere login: es la misma página que Spotify sirve para el reproductor embebido.
-// Corre como función serverless (Vercel) y como middleware en el dev server de Vite.
+// Esa página no tiene CORS, así que esto corre del lado del servidor: en el Cloudflare Worker
+// (producción, ver worker/) y como middleware del dev server de Vite (local).
 
 export interface AlbumPayload {
   id: string;
@@ -12,7 +13,7 @@ export interface AlbumPayload {
   tracks: { title: string; artist: string; durationMs: number }[];
 }
 
-type ApiResult = { status: number; body: AlbumPayload | { error: string } };
+export type ApiResult = { status: number; body: AlbumPayload | { error: string } };
 
 const ALBUM_ID = /^[A-Za-z0-9]{22}$/;
 const NEXT_DATA = /<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/;
@@ -87,12 +88,4 @@ export async function handleAlbumRequest(params: URLSearchParams): Promise<ApiRe
   } catch {
     return { status: 502, body: { error: 'upstream' } };
   }
-}
-
-export async function GET(request: Request): Promise<Response> {
-  const { status, body } = await handleAlbumRequest(new URL(request.url).searchParams);
-  return Response.json(body, {
-    status,
-    headers: { 'cache-control': status === 200 ? 'public, s-maxage=86400' : 'no-store' },
-  });
 }
