@@ -11,8 +11,6 @@ interface Props {
   position: string;
   readOnly?: boolean;
   knownGenres?: string[];
-  /** "Toca toca, la suerte es loca": salta a otro disco al azar. */
-  onRandom?: () => void;
   onClose: () => void;
   onPrev: () => void;
   onNext: () => void;
@@ -33,7 +31,6 @@ export function CaseViewer({
   position,
   readOnly = false,
   knownGenres = [],
-  onRandom,
   onClose,
   onPrev,
   onNext,
@@ -218,11 +215,6 @@ export function CaseViewer({
           <button type="button" onClick={flip}>
             {pose === 'back' ? 'Ver tapa' : 'Ver contratapa'}
           </button>
-          {onRandom && (
-            <button type="button" onClick={onRandom}>
-              Otro al azar
-            </button>
-          )}
           {!readOnly && (
             <button type="button" onClick={() => setPickingGenre(true)}>
               {album.genre ? `Género: ${album.genre}` : 'Elegir género'}

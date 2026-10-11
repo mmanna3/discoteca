@@ -297,7 +297,6 @@ export function App() {
           position={`${openIndex + 1} de ${albums.length}`}
           readOnly={!canEdit}
           knownGenres={knownGenres}
-          onRandom={albums.length > 1 ? () => setOpenId(randomAlbum(openAlbum.id).id) : undefined}
           onClose={() => setOpenId(null)}
           onPrev={() => step(-1)}
           onNext={() => step(1)}
