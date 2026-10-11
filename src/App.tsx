@@ -3,17 +3,20 @@ import { AddDisc } from './components/AddDisc';
 import { Cabinet } from './components/Cabinet';
 import { CaseViewer } from './components/CaseViewer';
 import { parseCollection, useCollection } from './lib/collection';
+import { useMetadataBackfill } from './lib/metadata';
 import { looksLikeSpotify } from './lib/spotify';
 import type { Album, SortMode } from './lib/types';
 
 const SORTS: { value: SortMode; label: string }[] = [
-  { value: 'artista', label: 'A–Z' },
+  { value: 'artista', label: 'Artista' },
+  { value: 'anio', label: 'Año' },
   { value: 'recientes', label: 'Recientes' },
   { value: 'color', label: 'Color' },
 ];
 
 export function App() {
   const { albums, count, sort, setSort, add, remove, update, importMany } = useCollection();
+  useMetadataBackfill(albums, update);
   const [openId, setOpenId] = useState<string | null>(null);
   const [adding, setAdding] = useState<{ value: string } | null>(null);
   const [newId, setNewId] = useState<string | null>(null);
@@ -177,7 +180,7 @@ export function App() {
           onClose={() => setOpenId(null)}
           onPrev={() => step(-1)}
           onNext={() => step(1)}
-          onToggleSpine={() => update(openAlbum.id, { spine: openAlbum.spine === 'arte' ? 'color' : 'arte' })}
+          onUpdate={(patch) => update(openAlbum.id, patch)}
           onRemove={() => {
             remove(openAlbum.id);
             setOpenId(null);

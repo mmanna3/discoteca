@@ -39,15 +39,19 @@ export function artistSortKey(artist: string): string {
   return artist.replace(/^the\s+/i, '').toLocaleLowerCase('es');
 }
 
+/** Los discos sin año conocido van al final. */
+const byYear = (a: Album, b: Album) => (a.year ?? 9999) - (b.year ?? 9999);
+const byArtist = (a: Album, b: Album) => artistSortKey(a.artist).localeCompare(artistSortKey(b.artist), 'es');
+const byTitle = (a: Album, b: Album) => a.title.localeCompare(b.title, 'es');
+
 export function sortAlbums(albums: Album[], mode: SortMode): Album[] {
   const list = [...albums];
   switch (mode) {
     case 'artista':
-      return list.sort(
-        (a, b) =>
-          artistSortKey(a.artist).localeCompare(artistSortKey(b.artist), 'es') ||
-          a.title.localeCompare(b.title, 'es'),
-      );
+      // Como en una discoteca de verdad: por artista y, dentro de cada uno, en orden cronológico.
+      return list.sort((a, b) => byArtist(a, b) || byYear(a, b) || byTitle(a, b));
+    case 'anio':
+      return list.sort((a, b) => byYear(a, b) || byArtist(a, b) || byTitle(a, b));
     case 'recientes':
       return list.sort((a, b) => b.addedAt - a.addedAt);
     case 'color':
@@ -60,7 +64,7 @@ export function useCollection() {
   const [sort, setSort] = useState<SortMode>(() => {
     try {
       const saved = localStorage.getItem(SORT_KEY);
-      return saved === 'recientes' || saved === 'color' ? saved : 'artista';
+      return saved === 'anio' || saved === 'recientes' || saved === 'color' ? saved : 'artista';
     } catch {
       return 'artista';
     }

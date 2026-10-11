@@ -3,6 +3,7 @@ import { formatDuration, formatTotal } from '../lib/format';
 import { spotifyAppUrl, spotifyWebUrl } from '../lib/spotify';
 import type { Album } from '../lib/types';
 import { Spine } from './Spine';
+import { SpinePicker } from './SpinePicker';
 
 interface Props {
   album: Album;
@@ -11,7 +12,7 @@ interface Props {
   onPrev: () => void;
   onNext: () => void;
   onRemove: () => void;
-  onToggleSpine: () => void;
+  onUpdate: (patch: Partial<Album>) => void;
 }
 
 /** Medidas reales de una caja de CD: 142 × 125 × 10 mm. */
@@ -22,17 +23,19 @@ function caseSize() {
 
 type Pose = 'entering' | 'front' | 'back';
 
-export function CaseViewer({ album, position, onClose, onPrev, onNext, onRemove, onToggleSpine }: Props) {
+export function CaseViewer({ album, position, onClose, onPrev, onNext, onRemove, onUpdate }: Props) {
   const [size, setSize] = useState(caseSize);
   const [pose, setPose] = useState<Pose>('entering');
   const [dragX, setDragX] = useState(0);
   const [confirming, setConfirming] = useState(false);
+  const [picking, setPicking] = useState(false);
   const drag = useRef<{ x: number; y: number; id: number } | null>(null);
 
   // Cada disco nuevo entra mostrando el lomo y gira hasta la tapa.
   useEffect(() => {
     setPose('entering');
     setConfirming(false);
+    setPicking(false);
     const frame = requestAnimationFrame(() => requestAnimationFrame(() => setPose('front')));
     return () => cancelAnimationFrame(frame);
   }, [album.id]);
@@ -44,6 +47,7 @@ export function CaseViewer({ album, position, onClose, onPrev, onNext, onRemove,
   }, []);
 
   useEffect(() => {
+    if (picking) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
       else if (e.key === 'ArrowLeft') onPrev();
@@ -55,7 +59,7 @@ export function CaseViewer({ album, position, onClose, onPrev, onNext, onRemove,
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, onPrev, onNext]);
+  }, [onClose, onPrev, onNext, picking]);
 
   const flip = () => setPose((p) => (p === 'back' ? 'front' : 'back'));
 
@@ -80,6 +84,10 @@ export function CaseViewer({ album, position, onClose, onPrev, onNext, onRemove,
   const totalMs = album.tracks.reduce((sum, t) => sum + t.durationMs, 0);
   const dense = album.tracks.length > 14;
   const showTrackArtist = album.tracks.some((t) => t.artist && t.artist !== album.artist);
+  const release = album.scan?.release;
+  const edition = release
+    ? [release.country, release.date?.slice(0, 4), release.label, release.catalogNumber].filter(Boolean).join(' · ')
+    : '';
 
   const style = {
     '--cw': `${size.w}px`,
@@ -91,121 +99,131 @@ export function CaseViewer({ album, position, onClose, onPrev, onNext, onRemove,
   } as CSSProperties;
 
   return (
-    <div className="viewer" role="dialog" aria-modal="true" aria-label={`${album.artist} — ${album.title}`} style={style}>
-      <div className="viewer__backdrop" onClick={onClose} />
-      <button type="button" className="viewer__close" onClick={onClose} aria-label="Guardar el disco">
-        ×
-      </button>
+    <>
+      <div className="viewer" role="dialog" aria-modal="true" aria-label={`${album.artist} — ${album.title}`} style={style}>
+        <div className="viewer__backdrop" onClick={onClose} />
+        <button type="button" className="viewer__close" onClick={onClose} aria-label="Guardar el disco">
+          ×
+        </button>
 
-      <div
-        className="viewer__stage"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={() => {
-          drag.current = null;
-          setDragX(0);
-        }}
-      >
-        <div className={`jewel jewel--${pose}${dragX ? ' jewel--dragging' : ''}`}>
-          <div className="jewel__face jewel__front">
-            <div className="jewel__hinge" />
-            <img className="jewel__cover" src={album.coverUrl} alt="" draggable={false} />
-            <div className="jewel__gloss" />
-          </div>
-
-          <div className={`jewel__face jewel__back${dense ? ' jewel__back--dense' : ''}`}>
-            <div className="tray">
-              <Spine album={album} className="tray__spine tray__spine--left" />
-              <div className="tray__body">
-                <div className="tray__heading">
-                  {album.artist && <span className="tray__artist">{album.artist}</span>}
-                  <span className="tray__title">{album.title}</span>
-                </div>
-                {album.tracks.length > 0 ? (
-                  <ol className="tray__tracks">
-                    {album.tracks.map((t, i) => (
-                      <li key={i}>
-                        <span className="tray__n">{i + 1}</span>
-                        <span className="tray__t">
-                          {t.title}
-                          {showTrackArtist && t.artist && <em> — {t.artist}</em>}
-                        </span>
-                        <span className="tray__d">{formatDuration(t.durationMs)}</span>
-                      </li>
-                    ))}
-                  </ol>
-                ) : (
-                  <p className="tray__none">Spotify no informó la lista de temas.</p>
-                )}
-                {totalMs > 0 && (
-                  <div className="tray__total">
-                    {album.tracks.length} temas · {formatTotal(totalMs)}
-                  </div>
-                )}
-              </div>
-              <Spine album={album} className="tray__spine tray__spine--right" />
+        <div
+          className="viewer__stage"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={() => {
+            drag.current = null;
+            setDragX(0);
+          }}
+        >
+          <div className={`jewel jewel--${pose}${dragX ? ' jewel--dragging' : ''}`}>
+            <div className="jewel__face jewel__front">
+              <div className="jewel__hinge" />
+              <img className="jewel__cover" src={album.coverUrl} alt="" draggable={false} />
+              <div className="jewel__gloss" />
             </div>
-            <div className="jewel__gloss" />
-          </div>
 
-          <div className="jewel__face jewel__spine">
-            <Spine album={album} />
+            <div className={`jewel__face jewel__back${dense ? ' jewel__back--dense' : ''}`}>
+              <div className="tray">
+                <Spine album={album} className="tray__spine tray__spine--left" hiRes />
+                <div className="tray__body">
+                  <div className="tray__heading">
+                    {album.artist && <span className="tray__artist">{album.artist}</span>}
+                    <span className="tray__title">{album.title}</span>
+                  </div>
+                  {album.tracks.length > 0 ? (
+                    <ol className="tray__tracks">
+                      {album.tracks.map((t, i) => (
+                        <li key={i}>
+                          <span className="tray__n">{i + 1}</span>
+                          <span className="tray__t">
+                            {t.title}
+                            {showTrackArtist && t.artist && <em> — {t.artist}</em>}
+                          </span>
+                          <span className="tray__d">{formatDuration(t.durationMs)}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p className="tray__none">Spotify no informó la lista de temas.</p>
+                  )}
+                  <div className="tray__total">
+                    {totalMs > 0 && (
+                      <div>
+                        {album.tracks.length} temas · {formatTotal(totalMs)}
+                      </div>
+                    )}
+                    {(album.year || album.label) && <div>{[album.year, album.label].filter(Boolean).join(' · ')}</div>}
+                    {album.spine === 'escaneo' && edition && <div>Lomo: edición {edition}</div>}
+                  </div>
+                </div>
+                <Spine album={album} className="tray__spine tray__spine--right" hiRes />
+              </div>
+              <div className="jewel__gloss" />
+            </div>
+
+            <div className="jewel__face jewel__spine">
+              <Spine album={album} hiRes />
+            </div>
+            <div className="jewel__face jewel__side" />
+            <div className="jewel__face jewel__top" />
+            <div className="jewel__face jewel__bottom" />
           </div>
-          <div className="jewel__face jewel__side" />
-          <div className="jewel__face jewel__top" />
-          <div className="jewel__face jewel__bottom" />
+          <div className="viewer__shadow" />
         </div>
-        <div className="viewer__shadow" />
-      </div>
 
-      <div className="viewer__info">
-        <div className="viewer__artist">{album.artist}</div>
-        <div className="viewer__title">{album.title}</div>
-      </div>
+        <div className="viewer__info">
+          <div className="viewer__artist">{album.artist}</div>
+          <div className="viewer__title">{album.title}</div>
+          {(album.year || album.label) && (
+            <div className="viewer__meta">{[album.year, album.label].filter(Boolean).join(' · ')}</div>
+          )}
+        </div>
 
-      <div className="viewer__controls">
-        <button type="button" className="round" onClick={onPrev} aria-label="Disco anterior">
-          ‹
-        </button>
-        <a className="play" href={spotifyAppUrl(album.id)}>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M8 5.5v13l11-6.5z" fill="currentColor" />
-          </svg>
-          Abrir en Spotify
-        </a>
-        <button type="button" className="round" onClick={onNext} aria-label="Disco siguiente">
-          ›
-        </button>
-      </div>
-
-      <div className="viewer__secondary">
-        <span className="viewer__position">{position}</span>
-        <button type="button" onClick={flip}>
-          {pose === 'back' ? 'Ver tapa' : 'Ver contratapa'}
-        </button>
-        <button type="button" onClick={onToggleSpine}>
-          Lomo: {album.spine === 'arte' ? 'arte de tapa' : 'color'}
-        </button>
-        <a href={spotifyWebUrl(album.id)} target="_blank" rel="noreferrer">
-          Abrir en la web
-        </a>
-        {confirming ? (
-          <span className="viewer__confirm">
-            ¿Sacarlo de la discoteca?
-            <button type="button" className="danger" onClick={onRemove}>
-              Sí, sacar
-            </button>
-            <button type="button" onClick={() => setConfirming(false)}>
-              No
-            </button>
-          </span>
-        ) : (
-          <button type="button" onClick={() => setConfirming(true)}>
-            Sacar de la discoteca
+        <div className="viewer__controls">
+          <button type="button" className="round" onClick={onPrev} aria-label="Disco anterior">
+            ‹
           </button>
-        )}
+          <a className="play" href={spotifyAppUrl(album.id)}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 5.5v13l11-6.5z" fill="currentColor" />
+            </svg>
+            Abrir en Spotify
+          </a>
+          <button type="button" className="round" onClick={onNext} aria-label="Disco siguiente">
+            ›
+          </button>
+        </div>
+
+        <div className="viewer__secondary">
+          <span className="viewer__position">{position}</span>
+          <button type="button" onClick={flip}>
+            {pose === 'back' ? 'Ver tapa' : 'Ver contratapa'}
+          </button>
+          <button type="button" onClick={() => setPicking(true)}>
+            Cambiar lomo
+          </button>
+          <a href={spotifyWebUrl(album.id)} target="_blank" rel="noreferrer">
+            Abrir en la web
+          </a>
+          {confirming ? (
+            <span className="viewer__confirm">
+              ¿Sacarlo de la discoteca?
+              <button type="button" className="danger" onClick={onRemove}>
+                Sí, sacar
+              </button>
+              <button type="button" onClick={() => setConfirming(false)}>
+                No
+              </button>
+            </span>
+          ) : (
+            <button type="button" onClick={() => setConfirming(true)}>
+              Sacar de la discoteca
+            </button>
+          )}
+        </div>
       </div>
-    </div>
+      {picking && <SpinePicker album={album} onUpdate={onUpdate} onClose={() => setPicking(false)} />}
+    </>
   );
 }

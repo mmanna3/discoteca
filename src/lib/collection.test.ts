@@ -25,6 +25,12 @@ describe('sortAlbums', () => {
     expect(sortAlbums(albums, 'artista').map((a) => a.id)).toEqual(['3', '1', '4', '2']);
   });
 
+  it('dentro de cada artista ordena por año (los sin año al final)', () => {
+    const withYears = albums.map((a) => (a.id === '1' ? { ...a, year: 1969 } : a.id === '4' ? { ...a, year: 1966 } : a));
+    expect(sortAlbums(withYears, 'artista').map((a) => a.id)).toEqual(['3', '4', '1', '2']);
+    expect(sortAlbums(withYears, 'anio').map((a) => a.id)).toEqual(['4', '1', '3', '2']);
+  });
+
   it('ordena por recientes', () => {
     expect(sortAlbums(albums, 'recientes').map((a) => a.id)).toEqual(['4', '1', '3', '2']);
   });

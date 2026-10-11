@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { analyzeCover, parseRgb, readableTextOn } from '../lib/colors';
+import { fetchMetadata } from '../lib/metadata';
 import { lookupAlbum } from '../lib/spotify';
 import type { Album } from '../lib/types';
 import { Spine } from './Spine';
@@ -16,7 +17,7 @@ type State =
   | { kind: 'idle' }
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
-  | { kind: 'preview'; album: Album; artistMissing: boolean };
+  | { kind: 'preview'; album: Album; artistMissing: boolean; metaDone?: boolean };
 
 async function buildAlbum(input: string): Promise<State> {
   const result = await lookupAlbum(input);
@@ -58,7 +59,20 @@ export function AddDisc({ initialValue, existingIds, onSave, onShow, onClose }: 
     const id = ++request.current;
     setState({ kind: 'loading' });
     const next = await buildAlbum(input);
-    if (id === request.current) setState(next);
+    if (id !== request.current) return;
+    setState(next);
+    if (next.kind !== 'preview') return;
+
+    // Año y sello llegan después (MusicBrainz es lento): completamos la vista previa al vuelo.
+    const meta = await fetchMetadata(next.album);
+    if (id !== request.current) return;
+    // Sin artista, una búsqueda fallida puede salir bien cuando lo escriban: que la reintente el backfill.
+    const usable = meta && (meta.metaSource || !next.artistMissing) ? meta : {};
+    setState((s) =>
+      s.kind === 'preview' && s.album.id === next.album.id
+        ? { ...s, metaDone: true, album: { ...s.album, ...usable } }
+        : s,
+    );
   };
 
   useEffect(() => {
@@ -147,9 +161,16 @@ export function AddDisc({ initialValue, existingIds, onSave, onShow, onClose }: 
                 <div className="dialog__artist">{preview.album.artist}</div>
               )}
               <div className="dialog__title">{preview.album.title}</div>
-              {preview.album.tracks.length > 0 && (
-                <div className="dialog__tracks">{preview.album.tracks.length} temas</div>
-              )}
+              <div className="dialog__tracks">
+                {[
+                  preview.album.year,
+                  preview.album.label,
+                  preview.album.tracks.length > 0 && `${preview.album.tracks.length} temas`,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+                {!preview.metaDone && <span className="dialog__pending"> · buscando año…</span>}
+              </div>
             </div>
           </div>
         )}

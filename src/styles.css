@@ -394,7 +394,7 @@ main {
   height: 100%;
   overflow: hidden;
   border-radius: 1.5px;
-  container-type: inline-size;
+  container-type: size;
   color: var(--spine-fg);
   background-color: var(--spine-bg);
   background-image: var(--spine-art);
@@ -459,6 +459,74 @@ main {
   overflow: hidden;
   text-overflow: ellipsis;
   letter-spacing: 0.02em;
+}
+
+.spine__year {
+  flex: none;
+  margin-inline-start: auto;
+  padding-inline-start: 0.6em;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+/* Lomo escaneado: el recorte va a la altura del lomo y los costados quedan como plástico. */
+.spine--escaneo {
+  background: linear-gradient(90deg, #121314, #34363a 50%, #121314);
+}
+
+.spine--escaneo .spine__cap {
+  position: relative;
+  z-index: 1;
+}
+
+.spine--escaneo .spine__cap--bottom {
+  margin-top: auto;
+}
+
+.scan-strip {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 100%;
+  width: calc(100cqh * var(--strip-ratio));
+  transform: translateX(-50%);
+  overflow: hidden;
+}
+
+.scan-strip__box {
+  position: absolute;
+  container-type: size;
+}
+
+.scan-img {
+  position: absolute;
+  display: block;
+  max-width: none;
+}
+
+.scan-img--r0,
+.scan-img--r180 {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.scan-img--r180 {
+  transform: rotate(180deg);
+}
+
+.scan-img--r90,
+.scan-img--r270 {
+  left: 50%;
+  top: 50%;
+  width: 100cqh;
+  height: 100cqw;
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.scan-img--r270 {
+  transform: translate(-50%, -50%) rotate(270deg);
 }
 
 /* ───────────── El disco en la mano ───────────── */
@@ -756,6 +824,10 @@ main {
   opacity: 0.7;
 }
 
+.tray__total > div + div {
+  margin-top: 0.3em;
+}
+
 .tray__total {
   margin-top: 4%;
   padding-top: 3%;
@@ -788,6 +860,12 @@ main {
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: rgba(243, 234, 216, 0.65);
+}
+
+.viewer__meta {
+  margin-top: 6px;
+  font-size: 14px;
+  color: rgba(243, 234, 216, 0.55);
 }
 
 .viewer__title {
@@ -1117,7 +1195,267 @@ main {
   }
 }
 
+/* ───────────── Elegir lomo ───────────── */
+
+.picker {
+  z-index: 65;
+}
+
+.picker__card {
+  width: min(900px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+
+.picker__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.picker__x {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(42, 30, 22, 0.08);
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.picker__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.picker__option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.picker__option-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: 1.5px solid rgba(42, 30, 22, 0.15);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.4);
+  color: var(--ink);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.picker__option.is-active .picker__option-btn {
+  border-color: var(--ink);
+  background: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
+}
+
+.picker__option-spine {
+  display: block;
+  width: 23px;
+  height: 200px;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.35);
+}
+
+.picker__link {
+  border: 0;
+  background: none;
+  color: rgba(42, 30, 22, 0.7);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.picker__subtitle {
+  margin: 22px 0 0;
+  font-size: 17px;
+}
+
+.picker__note {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: rgba(42, 30, 22, 0.65);
+}
+
+.picker__loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.picker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.picker__scan {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1.5px solid rgba(42, 30, 22, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.45);
+  color: var(--ink);
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.picker__scan:hover {
+  border-color: var(--ink);
+  transform: translateY(-2px);
+}
+
+.picker__scan img {
+  width: 100%;
+  height: 140px;
+  object-fit: contain;
+  border-radius: 4px;
+  /* Cover Art Archive tarda unos segundos en servir cada imagen. */
+  background: linear-gradient(100deg, #1d1e20 30%, #2f3134 50%, #1d1e20 70%) 0 0 / 300% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -150% 0;
+  }
+}
+
+.picker__scan-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: rgba(42, 30, 22, 0.65);
+}
+
+.picker__scan-caption b {
+  color: var(--ink);
+}
+
+.crop {
+  display: flex;
+  gap: 22px;
+  margin-top: 14px;
+}
+
+.crop__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.crop__stage {
+  position: relative;
+  overflow: hidden;
+  background: #1d1e20;
+  border-radius: 4px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.crop__img {
+  position: absolute;
+  display: block;
+  max-width: none;
+  pointer-events: none;
+}
+
+.crop__rect {
+  position: absolute;
+  cursor: move;
+  outline: 2px solid #ffd76a;
+  box-shadow: 0 0 0 9999px rgba(10, 6, 3, 0.6);
+}
+
+.crop__handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border: 2px solid #ffd76a;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.crop__handle--n { left: 50%; top: 0; cursor: ns-resize; }
+.crop__handle--s { left: 50%; top: 100%; cursor: ns-resize; }
+.crop__handle--e { left: 100%; top: 50%; cursor: ew-resize; }
+.crop__handle--w { left: 0; top: 50%; cursor: ew-resize; }
+.crop__handle--nw { left: 0; top: 0; cursor: nwse-resize; }
+.crop__handle--se { left: 100%; top: 100%; cursor: nwse-resize; }
+.crop__handle--ne { left: 100%; top: 0; cursor: nesw-resize; }
+.crop__handle--sw { left: 0; top: 100%; cursor: nesw-resize; }
+
+.crop__tools {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.crop__side {
+  flex: none;
+  width: 230px;
+  display: flex;
+  flex-direction: column;
+}
+
+.crop__preview {
+  align-self: center;
+  width: 30px;
+  height: 300px;
+  box-shadow: 3px 0 6px rgba(0, 0, 0, 0.35);
+}
+
+.crop__edition {
+  margin: 10px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.crop__side .dialog__actions {
+  margin-top: auto;
+  padding-top: 16px;
+  flex-wrap: wrap;
+}
+
+.dialog__pending {
+  opacity: 0.7;
+}
+
 @media (max-width: 639px) {
+  .crop {
+    flex-direction: column;
+  }
+
+  .crop__side {
+    width: auto;
+  }
+
+  .crop__preview {
+    height: 220px;
+    width: 22px;
+  }
+
   :root {
     --shelf-pad: 10px;
   }
