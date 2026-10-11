@@ -19,3 +19,23 @@ npm test
 - **Sitio:** GitHub Pages en `mmanna3.github.io/discoteca`, con `.github/workflows/pages.yml` en cada push a `main` (Settings → Pages → Source: GitHub Actions).
 - **Proxy de Spotify:** `npm run deploy:worker`. La URL del Worker va en `.env.production` como `VITE_ALBUM_API`.
 - **Reglas de Firestore:** `npm run deploy:rules`.
+
+## ¿Ya existía algo parecido?
+
+Investigación del 2026-10-11: tres búsquedas web, a partir de los resúmenes de cada resultado. No se abrió ni probó cada proyecto.
+
+La nostalgia de "ver la colección física en lo digital" ya la tuvo más gente, pero no apareció nada que haga lo mismo que esta discoteca.
+
+**Lo más cercano:**
+
+- **[Spine Music](https://techradar.com/audio/audio-streaming/miss-your-cd-collection-this-wall-mounted-display-for-spotify-and-apple-music-promises-to-bring-back-its-feeling-of-connection-but-its-maker-insists-he-doesnt-want-to-kill-off-physical-media):** la misma idea, pero en hardware. Es un aparato para colgar en la pared, conectado a Spotify, Apple Music y Tidal, que estaba por salir en Kickstarter (lo que se mostró eran renders).
+- **[Playbase](https://github.com/allene-norton/Playbase):** web con Spotify donde agregás discos a un estante virtual y los vas pasando. Son vinilos, no lomos de CD, y pide Spotify Premium con login. Parece un proyecto de curso (Flatiron School).
+- **[CDs](https://mwm.ai/apps/cds/6752527351)** y **[Disc Shelf](https://apps.apple.com/mx/app/disc-shelf/id6752208616):** apps de iPhone que muestran tu biblioteca como un estante. Disc Shelf usa tu colección de Discogs, no Spotify.
+- **[Virtual Shelf](https://infoscience.epfl.ch/record/165011?ln=en):** prototipo de investigación de la EPFL que mostraba una colección como un estante de CDs clásico.
+- **Caja de CD en 3D:** AlbumDeck (iPhone/iPad, paga, con Apple Music) y el viejo [JewelCase](https://www.applesfera.com/aplicaciones-os-x-1/jewelcase-21-tus-cd-en-3d-en-itunes) para iTunes.
+
+**Lo que no apareció en ningún lado:**
+
+- **Lomos** generados a partir de la tapa. Una de las búsquedas fue justamente un "generador de lomos" y no apareció ninguno.
+- **Lomos reales escaneados** de ediciones físicas, sacados de Cover Art Archive.
+- La combinación de **mueble de los 90 + lomos + caja 3D con contratapa + Spotify sin login**, con año, sello y género sacados de fuentes reales.
