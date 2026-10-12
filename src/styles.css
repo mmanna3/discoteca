@@ -1590,6 +1590,72 @@ main {
   margin-top: 14px;
 }
 
+/* ───────────── Toca toca, la suerte es loca ───────────── */
+
+.lucky {
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+
+.lucky__group {
+  margin: 16px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.lucky__group legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(42, 30, 22, 0.6);
+}
+
+.lucky__years {
+  display: flex;
+  gap: 12px;
+}
+
+.lucky__years label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  color: rgba(42, 30, 22, 0.75);
+}
+
+.lucky__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.lucky__footer .dialog__actions {
+  margin-top: 0;
+}
+
+.lucky__count {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.lucky__count.is-empty {
+  color: #a3311d;
+}
+
+.dialog .btn--luck {
+  color: #3b2a0c;
+  background:
+    linear-gradient(100deg, rgba(255, 255, 255, 0.35), transparent 35%, transparent 70%, rgba(255, 255, 255, 0.2)),
+    linear-gradient(180deg, var(--brass-1), var(--brass-2));
+}
+
 @media (max-width: 639px) {
   .crop {
     flex-direction: column;

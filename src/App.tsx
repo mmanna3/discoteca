@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AddDisc } from './components/AddDisc';
 import { Cabinet } from './components/Cabinet';
 import { CaseViewer } from './components/CaseViewer';
+import { LuckyDialog } from './components/LuckyDialog';
 import { OWNER_UID } from './config';
 import { parseCollection, useCollection } from './lib/collection';
 import { signIn, signOutUser, useUser } from './lib/firebase';
+import { loadLuckyFilters, saveLuckyFilters, type LuckyFilters } from './lib/lucky';
 import { useMetadataBackfill } from './lib/metadata';
 import { looksLikeSpotify } from './lib/spotify';
 import { countryName } from './sources/countries';
@@ -67,19 +69,25 @@ export function App() {
     [albums],
   );
 
-  // "Toca toca, la suerte es loca": una ruleta recorre los lomos, se va frenando y abre el elegido.
+  // "Toca toca, la suerte es loca": elegís filtros, una ruleta recorre los lomos que los cumplen,
+  // se va frenando y abre el elegido.
+  const [luckyOpen, setLuckyOpen] = useState(false);
+  const [luckyFilters, setLuckyFilters] = useState<LuckyFilters>(loadLuckyFilters);
   const [litId, setLitId] = useState<string | null>(null);
   const rolling = useRef(false);
   const lastLucky = useRef<string | null>(null);
-  const randomAlbum = (exclude: string | null) => {
-    const pool = albums.length > 1 ? albums.filter((a) => a.id !== exclude) : albums;
-    return pool[Math.floor(Math.random() * pool.length)];
+  const randomFrom = (pool: Album[], exclude: string | null) => {
+    const candidates = pool.length > 1 ? pool.filter((a) => a.id !== exclude) : pool;
+    return candidates[Math.floor(Math.random() * candidates.length)];
   };
-  const tocaToca = () => {
-    if (albums.length === 0 || rolling.current) return;
-    const chosen = randomAlbum(lastLucky.current);
+  const tocaToca = (pool: Album[], filters: LuckyFilters) => {
+    setLuckyOpen(false);
+    setLuckyFilters(filters);
+    saveLuckyFilters(filters);
+    if (pool.length === 0 || rolling.current) return;
+    const chosen = randomFrom(pool, lastLucky.current);
     lastLucky.current = chosen.id;
-    if (albums.length < 3 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (pool.length < 3 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setOpenId(chosen.id);
       return;
     }
@@ -90,7 +98,7 @@ export function App() {
     let previous: string | null = null;
     for (let i = 0; i < steps; i++) {
       at += 45 + i * i * 1.6;
-      const id: string = i === steps - 1 ? chosen.id : randomAlbum(previous).id;
+      const id: string = i === steps - 1 ? chosen.id : randomFrom(pool, previous).id;
       previous = id;
       window.setTimeout(() => setLitId(id), at);
     }
@@ -119,8 +127,8 @@ export function App() {
   }, [adding, canEdit]);
 
   useEffect(() => {
-    document.body.classList.toggle('locked', !!openAlbum || !!adding);
-  }, [openAlbum, adding]);
+    document.body.classList.toggle('locked', !!openAlbum || !!adding || luckyOpen);
+  }, [openAlbum, adding, luckyOpen]);
 
   const step = (delta: number) => {
     if (albums.length === 0 || openIndex < 0) return;
@@ -192,7 +200,7 @@ export function App() {
               </button>
             ))}
           </div>
-          <button type="button" className="btn btn--luck" onClick={tocaToca} disabled={count === 0}>
+          <button type="button" className="btn btn--luck" onClick={() => setLuckyOpen(true)} disabled={count === 0}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <rect x="3" y="3" width="18" height="18" rx="4" fill="none" stroke="currentColor" strokeWidth="2" />
               <circle cx="8" cy="8" r="1.6" fill="currentColor" />
@@ -316,6 +324,10 @@ export function App() {
             showToast(`Sacaste “${openAlbum.title}”`);
           }}
         />
+      )}
+
+      {luckyOpen && (
+        <LuckyDialog albums={albums} initial={luckyFilters} onSpin={tocaToca} onClose={() => setLuckyOpen(false)} />
       )}
 
       {adding && canEdit && (
