@@ -7,17 +7,21 @@ import { parseCollection, useCollection } from './lib/collection';
 import { signIn, signOutUser, useUser } from './lib/firebase';
 import { useMetadataBackfill } from './lib/metadata';
 import { looksLikeSpotify } from './lib/spotify';
+import { countryName } from './sources/countries';
 import type { Album, SortMode } from './lib/types';
 
 const SORTS: { value: SortMode; label: string }[] = [
   { value: 'artista', label: 'Artista' },
   { value: 'anio', label: 'Año' },
   { value: 'genero', label: 'Género' },
+  { value: 'pais', label: 'País' },
   { value: 'recientes', label: 'Recientes' },
   { value: 'color', label: 'Color' },
 ];
 
 const sectionByGenre = (album: Album) => album.genre ?? 'Sin género';
+const sectionByCountry = (album: Album) => countryName(album.country) ?? 'Sin país';
+const SECTIONS: Partial<Record<SortMode, (album: Album) => string>> = { genero: sectionByGenre, pais: sectionByCountry };
 
 function signInErrorMessage(error: unknown): string | null {
   const code = (error as { code?: string })?.code ?? '';
@@ -54,6 +58,10 @@ export function App() {
   const openIndex = albums.findIndex((a) => a.id === openId);
   const openAlbum = openIndex >= 0 ? albums[openIndex] : null;
   const existingIds = useMemo(() => new Set(albums.map((a) => a.id)), [albums]);
+  const knownCountries = useMemo(
+    () => [...new Set(albums.map((a) => a.country).filter((c): c is string => !!c))],
+    [albums],
+  );
   const knownGenres = useMemo(
     () => [...new Set(albums.map((a) => a.genre).filter((g): g is string => !!g))],
     [albums],
@@ -280,7 +288,7 @@ export function App() {
           openId={openAlbum?.id ?? null}
           newId={newId}
           highlightId={litId}
-          sectionOf={sort === 'genero' ? sectionByGenre : undefined}
+          sectionOf={SECTIONS[sort]}
           onOpen={setOpenId}
           onAdd={canEdit ? () => setAdding({ value: '' }) : undefined}
         />
@@ -297,6 +305,7 @@ export function App() {
           position={`${openIndex + 1} de ${albums.length}`}
           readOnly={!canEdit}
           knownGenres={knownGenres}
+          knownCountries={knownCountries}
           onClose={() => setOpenId(null)}
           onPrev={() => step(-1)}
           onNext={() => step(1)}

@@ -46,7 +46,7 @@ interface MbReleaseGroup {
   'first-release-date'?: string;
   'primary-type'?: string | null;
   score?: number;
-  'artist-credit'?: { name: string; artist?: { id: string } }[];
+  'artist-credit'?: { name: string; artist?: { id: string; country?: string | null } }[];
   genres?: MbGenre[];
 }
 interface MbRelease {
@@ -143,6 +143,25 @@ export async function findGenres(releaseGroupId: string | null | undefined, arti
   // Solo si hay un único artista con ese nombre exacto: con homónimos no adivinamos.
   const exact = (found?.artists ?? []).filter((a) => (a.score ?? 0) >= 95 && sameText(a.name, name));
   return exact.length === 1 ? artistGenres(exact[0].id) : [];
+}
+
+/**
+ * País del artista principal (código ISO, p. ej. "AR"). Con release group es exacto; sin él,
+ * busca el artista por nombre y solo acepta si hay un único homónimo exacto.
+ */
+export async function findArtistCountry(releaseGroupId: string | null | undefined, artist: string): Promise<string | null> {
+  if (releaseGroupId) {
+    const group = await mbFetch<MbReleaseGroup>(`release-group/${releaseGroupId}?inc=artist-credits`);
+    return group?.['artist-credit']?.[0]?.artist?.country ?? null;
+  }
+  const name = primaryArtist(artist);
+  if (!name) return null;
+  const query = encodeURIComponent(`artist:${quote(name)}`);
+  const found = await mbFetch<{ artists?: { name: string; score?: number; country?: string | null }[] }>(
+    `artist?query=${query}&limit=5`,
+  );
+  const exact = (found?.artists ?? []).filter((a) => (a.score ?? 0) >= 95 && sameText(a.name, name));
+  return exact.length === 1 ? (exact[0].country ?? null) : null;
 }
 
 export interface SpineScan {

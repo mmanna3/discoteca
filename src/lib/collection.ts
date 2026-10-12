@@ -1,6 +1,7 @@
 import { collection, deleteDoc, doc, onSnapshot, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { OWNER_UID } from '../config';
+import { countryName } from '../sources/countries';
 import { hueKey } from './colors';
 import { db } from './firebase';
 import type { Album, SortMode } from './types';
@@ -51,6 +52,10 @@ export function artistSortKey(artist: string): string {
 const byYear = (a: Album, b: Album) => (a.year ?? 9999) - (b.year ?? 9999);
 const byArtist = (a: Album, b: Album) => artistSortKey(a.artist).localeCompare(artistSortKey(b.artist), 'es');
 const byTitle = (a: Album, b: Album) => a.title.localeCompare(b.title, 'es');
+/** Los discos sin país van al final, en su propio grupo. */
+const byCountry = (a: Album, b: Album) =>
+  Number(!a.country) - Number(!b.country) ||
+  (countryName(a.country) ?? '').localeCompare(countryName(b.country) ?? '', 'es');
 /** Los discos sin género van al final, en su propio grupo. */
 const byGenre = (a: Album, b: Album) =>
   Number(!a.genre) - Number(!b.genre) || (a.genre ?? '').localeCompare(b.genre ?? '', 'es');
@@ -63,6 +68,8 @@ export function sortAlbums(albums: Album[], mode: SortMode): Album[] {
       return list.sort((a, b) => byArtist(a, b) || byYear(a, b) || byTitle(a, b));
     case 'anio':
       return list.sort((a, b) => byYear(a, b) || byArtist(a, b) || byTitle(a, b));
+    case 'pais':
+      return list.sort((a, b) => byCountry(a, b) || byArtist(a, b) || byYear(a, b) || byTitle(a, b));
     case 'genero':
       return list.sort((a, b) => byGenre(a, b) || byArtist(a, b) || byYear(a, b) || byTitle(a, b));
     case 'recientes':
@@ -84,7 +91,8 @@ export function useCollection({ canEdit, onMigrated }: { canEdit: boolean; onMig
   const [sort, setSort] = useState<SortMode>(() => {
     try {
       const saved = localStorage.getItem(SORT_KEY);
-      return saved === 'anio' || saved === 'genero' || saved === 'recientes' || saved === 'color' ? saved : 'artista';
+      const modes: SortMode[] = ['anio', 'genero', 'pais', 'recientes', 'color'];
+      return modes.find((m) => m === saved) ?? 'artista';
     } catch {
       return 'artista';
     }

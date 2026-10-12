@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { searchItunes } from '../sources/itunes';
 import { firstFamily, genreFamily } from '../sources/genres';
 import {
+  findArtistCountry,
   findBySpotifyId,
   findGenres,
   findSpineScans,
@@ -14,6 +15,7 @@ import type { Album } from './types';
 
 export type MetaPatch = Pick<Album, 'year' | 'releaseDate' | 'label' | 'releaseGroupId' | 'metaSource' | 'metaFetchedAt'>;
 export type GenrePatch = Pick<Album, 'genre' | 'genreSource' | 'genreFetchedAt'>;
+export type CountryPatch = Pick<Album, 'country' | 'countrySource' | 'countryFetchedAt'>;
 
 /**
  * Año original y sello: 1) MusicBrainz por el link de Spotify (exacto) → 2) MusicBrainz por
@@ -66,6 +68,16 @@ export async function fetchGenre(
   return failures === 2 ? null : { genre: null, genreSource: null, genreFetchedAt: Date.now() };
 }
 
+/** País del artista según MusicBrainz. Devuelve null si no se pudo consultar (para reintentar). */
+export async function fetchCountry(album: Pick<Album, 'artist' | 'releaseGroupId'>): Promise<CountryPatch | null> {
+  try {
+    const country = await findArtistCountry(album.releaseGroupId, album.artist);
+    return { country, countrySource: country ? 'musicbrainz' : null, countryFetchedAt: Date.now() };
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchSpineScans(releaseGroupId: string): Promise<SpineScan[] | null> {
   try {
     return await findSpineScans(releaseGroupId);
@@ -75,8 +87,8 @@ export async function fetchSpineScans(releaseGroupId: string): Promise<SpineScan
 }
 
 /**
- * Completa de a uno los discos a los que les faltan datos: primero año y sello, después el
- * género (que necesita el release group). Un género elegido a mano no se toca.
+ * Completa de a uno los discos a los que les faltan datos: primero año y sello, después género
+ * y país (que necesitan el release group). Lo elegido a mano no se toca.
  */
 export function useMetadataBackfill(
   albums: Album[],
@@ -91,11 +103,16 @@ export function useMetadataBackfill(
     const pending = albums.filter((a) => !failed.current.has(a.id));
     const needsMeta = pending.find((a) => a.metaFetchedAt === undefined);
     const needsGenre = pending.find((a) => a.genreFetchedAt === undefined && a.genreSource !== 'manual');
-    const next = needsMeta ?? needsGenre;
+    const needsCountry = pending.find((a) => a.countryFetchedAt === undefined && a.countrySource !== 'manual');
+    const next = needsMeta ?? needsGenre ?? needsCountry;
     if (!next) return;
 
     inFlight.current = next.id;
-    const task: Promise<Partial<Album> | null> = needsMeta ? fetchMetadata(next) : fetchGenre(next);
+    const task: Promise<Partial<Album> | null> = needsMeta
+      ? fetchMetadata(next)
+      : needsGenre
+        ? fetchGenre(next)
+        : fetchCountry(next);
     void task.then((patch) => {
       inFlight.current = null;
       if (patch) update(next.id, patch);

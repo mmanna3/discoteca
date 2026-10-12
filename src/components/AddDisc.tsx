@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { analyzeCover, parseRgb, readableTextOn } from '../lib/colors';
-import { fetchGenre, fetchMetadata } from '../lib/metadata';
+import { fetchCountry, fetchGenre, fetchMetadata } from '../lib/metadata';
+import { countryName } from '../sources/countries';
 import { lookupAlbum } from '../lib/spotify';
 import type { Album } from '../lib/types';
 import { Spine } from './Spine';
@@ -75,13 +76,14 @@ export function AddDisc({ initialValue, existingIds, onSave, onShow, onClose }: 
     );
 
     if (next.artistMissing) return;
-    const genre = await fetchGenre({ ...next.album, releaseGroupId: meta?.releaseGroupId ?? null });
-    if (!genre || id !== request.current) return;
-    setState((s) =>
-      s.kind === 'preview' && s.album.id === next.album.id && s.album.genreSource !== 'manual'
-        ? { ...s, album: { ...s.album, ...genre } }
-        : s,
-    );
+    const withGroup = { ...next.album, releaseGroupId: meta?.releaseGroupId ?? null };
+    const genre = await fetchGenre(withGroup);
+    if (id !== request.current) return;
+    if (genre) setState((s) => (s.kind === 'preview' && s.album.id === next.album.id ? { ...s, album: { ...s.album, ...genre } } : s));
+
+    const country = await fetchCountry(withGroup);
+    if (!country || id !== request.current) return;
+    setState((s) => (s.kind === 'preview' && s.album.id === next.album.id ? { ...s, album: { ...s.album, ...country } } : s));
   };
 
   useEffect(() => {
@@ -175,6 +177,7 @@ export function AddDisc({ initialValue, existingIds, onSave, onShow, onClose }: 
                   preview.album.year,
                   preview.album.label,
                   preview.album.genre,
+                  countryName(preview.album.country),
                   preview.album.tracks.length > 0 && `${preview.album.tracks.length} temas`,
                 ]
                   .filter(Boolean)

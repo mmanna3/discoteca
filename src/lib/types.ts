@@ -58,6 +58,12 @@ export interface Album {
   genreSource?: 'manual' | 'musicbrainz' | 'itunes' | null;
   /** Ausente = todavía no se buscó. */
   genreFetchedAt?: number;
+
+  /** País del artista (código ISO, p. ej. "AR"). Si lo elegiste a mano, no se vuelve a pisar. */
+  country?: string | null;
+  countrySource?: 'manual' | 'musicbrainz' | null;
+  /** Ausente = todavía no se buscó. */
+  countryFetchedAt?: number;
 }
 
-export type SortMode = 'artista' | 'anio' | 'genero' | 'recientes' | 'color';
+export type SortMode = 'artista' | 'anio' | 'genero' | 'pais' | 'recientes' | 'color';

@@ -36,6 +36,11 @@ describe('sortAlbums', () => {
     expect(sortAlbums(withGenres, 'genero').map((a) => a.id)).toEqual(['1', '3', '2', '4']);
   });
 
+  it('ordena por país (los sin país al final) y dentro de cada uno por artista', () => {
+    const withCountries = albums.map((a) => ({ ...a, country: a.id === '2' || a.id === '3' ? 'AR' : a.id === '1' ? 'GB' : null }));
+    expect(sortAlbums(withCountries, 'pais').map((a) => a.id)).toEqual(['3', '2', '1', '4']);
+  });
+
   it('ordena por recientes', () => {
     expect(sortAlbums(albums, 'recientes').map((a) => a.id)).toEqual(['4', '1', '3', '2']);
   });
