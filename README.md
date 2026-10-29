@@ -12,7 +12,11 @@ npm test
 - **Datos del disco:** el artista, los temas y los colores salen de la página pública del reproductor embebido de Spotify, sin login. Esa página no tiene CORS, así que se lee del lado del servidor: en local con un middleware de Vite (`/api/album`) y en producción con un Cloudflare Worker (`worker/`). Si no responde, se usa oEmbed (título y tapa) y se pide el artista a mano.
 - **Año y sello:** MusicBrainz por el link de Spotify (match exacto); si no, por artista + título limpio; si no, iTunes. Se consultan directo desde el navegador. Los discos sin estos datos se completan solos en segundo plano.
 - **Lomos:** generados (franja izquierda de la tapa estirada, o el color que Spotify calcula para el disco) o **escaneos reales** de ediciones en CD de Cover Art Archive, recortados a mano en "Cambiar lomo".
-- **Persistencia:** Firestore (`discotecas/{uid}/discos`), con caché offline. Lectura pública; solo el dueño (`OWNER_UID` en `src/config.ts` y `firestore.rules`) puede editar, entrando con Google. Con `OWNER_UID` vacío, todo queda en el `localStorage` del navegador.
+- **Una discoteca por persona:** cualquiera entra con Google y arma la suya, en `…/discoteca/#/su-nombre`. La portada te lleva a la tuya, o te ofrece crearla.
+- **Persistencia:** Firestore, con caché offline. Lectura pública; cada uno edita solo lo suyo (`firestore.rules`).
+  - `usuarios/{handle}` → `{ uid }`: el nombre de la URL. Se reserva una vez y no se cambia; `mana` está reservado para la discoteca original (`RESERVED_HANDLES` en `src/config.ts`).
+  - `perfiles/{uid}` → `{ handle, nombre, creadoAt }`: se crea en el mismo lote que su nombre. Acá irían los ajustes por usuario ([PERSONALIZACION.md](PERSONALIZACION.md)).
+  - `discotecas/{uid}/discos/{id de Spotify}`: los discos.
 
 ## Deploy
 

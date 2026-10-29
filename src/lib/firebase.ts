@@ -17,6 +17,15 @@ export const db = initializeFirestore(app, {
 export const signIn = () => signInWithPopup(auth, new GoogleAuthProvider());
 export const signOutUser = () => signOut(auth);
 
+/** `null` si no hace falta avisar nada (por ejemplo, cerraste el popup). */
+export function signInErrorMessage(error: unknown): string | null {
+  const code = (error as { code?: string })?.code ?? '';
+  if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return null;
+  if (code === 'auth/unauthorized-domain') return 'Este dominio no está autorizado en Firebase Authentication';
+  if (code === 'auth/operation-not-allowed') return 'Falta habilitar el acceso con Google en Firebase';
+  return 'No pude iniciar sesión';
+}
+
 /** `undefined` mientras Firebase resuelve la sesión guardada. */
 export function useUser(): User | null | undefined {
   const [user, setUser] = useState<User | null | undefined>(undefined);

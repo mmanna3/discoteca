@@ -97,6 +97,20 @@ button {
   text-shadow: 0 1px 0 rgba(255, 240, 200, 0.65);
 }
 
+/* "de Mana", grabado más chico debajo de DISCOTECA. */
+.plaque__owner {
+  display: block;
+  margin-top: 1px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-align: center;
+}
+
+.topbar--center {
+  justify-content: center;
+}
+
 .plaque__screw {
   width: 9px;
   height: 9px;
@@ -161,6 +175,11 @@ button {
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
   transition: transform 0.15s, filter 0.15s;
+}
+
+a.btn {
+  display: inline-block;
+  text-decoration: none;
 }
 
 .btn:hover:not(:disabled) {
@@ -284,13 +303,6 @@ button {
 
 .notice code {
   font-size: 13px;
-}
-
-.notice__uid {
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.35);
-  user-select: all;
 }
 
 /* ───────────── El mueble ───────────── */
@@ -1133,7 +1145,8 @@ main {
   gap: 8px;
 }
 
-.dialog input {
+.dialog input,
+.welcome input {
   flex: 1;
   min-width: 0;
   padding: 11px 14px;
@@ -1145,13 +1158,15 @@ main {
   font-size: 16px;
 }
 
-.dialog input:focus {
+.dialog input:focus,
+.welcome input:focus {
   outline: none;
   border-color: var(--brass-2);
   box-shadow: 0 0 0 3px rgba(176, 138, 67, 0.25);
 }
 
-.dialog .btn {
+.dialog .btn,
+.welcome .btn {
   background: var(--ink);
   color: var(--paper);
 }
@@ -1253,6 +1268,41 @@ main {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 20px;
+}
+
+/* ───────────── Portada y "Armá tu discoteca" ───────────── */
+
+.welcome {
+  display: grid;
+  justify-items: center;
+  padding: 24px 16px 60px;
+}
+
+.welcome__card {
+  animation: none;
+}
+
+.welcome__loading {
+  color: rgba(243, 234, 216, 0.6);
+}
+
+.welcome__form {
+  display: grid;
+  gap: 14px;
+}
+
+.welcome__form label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.welcome__url {
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(42, 30, 22, 0.6);
+  overflow-wrap: anywhere;
 }
 
 /* ───────────── Avisos y animaciones ───────────── */

@@ -11,7 +11,9 @@ export const firebaseConfig = {
 };
 
 /**
- * UID de Firebase Auth del dueño de la discoteca: la única cuenta que puede editarla.
- * Tiene que coincidir con el de firestore.rules. Vacío = todavía no configurado (modo local).
+ * Nombres reservados para discotecas que ya existían antes de que hubiera usuarios.
+ * Tienen que coincidir con firestore.rules.
  */
-export const OWNER_UID = 'rK4orgfeviV2Fx5BMO7XF2g3SSG3';
+export const RESERVED_HANDLES: Record<string, string> = {
+  mana: 'rK4orgfeviV2Fx5BMO7XF2g3SSG3',
+};

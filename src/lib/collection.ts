@@ -1,6 +1,5 @@
 import { collection, deleteDoc, doc, onSnapshot, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { OWNER_UID } from '../config';
 import { countryName } from '../sources/countries';
 import { hueKey } from './colors';
 import { db } from './firebase';
@@ -11,8 +10,6 @@ const STORAGE_KEY = 'discoteca:v1';
 const MIGRATED_KEY = 'discoteca:subida-a-firestore';
 const SORT_KEY = 'discoteca:orden';
 
-/** discotecas/{uid}/discos/{id de Spotify}: lectura pública, escritura solo del dueño. */
-const discos = OWNER_UID ? collection(db, 'discotecas', OWNER_UID, 'discos') : null;
 
 function isAlbum(value: unknown): value is Album {
   const a = value as Album;
@@ -81,13 +78,19 @@ export function sortAlbums(albums: Album[], mode: SortMode): Album[] {
 
 export type CollectionStatus = 'cargando' | 'lista' | 'error';
 
-/**
- * La discoteca vive en Firestore (con caché local). Mientras OWNER_UID no esté configurado,
- * funciona como antes: solo en el localStorage de este navegador.
- */
-export function useCollection({ canEdit, onMigrated }: { canEdit: boolean; onMigrated?: (count: number) => void }) {
-  const [albums, setAlbums] = useState<Album[]>(() => (discos ? [] : loadLocal()));
-  const [status, setStatus] = useState<CollectionStatus>(discos ? 'cargando' : 'lista');
+interface CollectionOptions {
+  /** De quién es la discoteca que se está viendo. */
+  ownerUid: string;
+  canEdit: boolean;
+  onMigrated?: (count: number) => void;
+}
+
+/** La discoteca de `ownerUid`, en Firestore (con caché local). */
+export function useCollection({ ownerUid, canEdit, onMigrated }: CollectionOptions) {
+  /** discotecas/{uid}/discos/{id de Spotify}: lectura pública, escritura solo del dueño. */
+  const discos = useMemo(() => collection(db, 'discotecas', ownerUid, 'discos'), [ownerUid]);
+  const [albums, setAlbums] = useState<Album[]>([]);
+  const [status, setStatus] = useState<CollectionStatus>('cargando');
   const [sort, setSort] = useState<SortMode>(() => {
     try {
       const saved = localStorage.getItem(SORT_KEY);
@@ -99,7 +102,8 @@ export function useCollection({ canEdit, onMigrated }: { canEdit: boolean; onMig
   });
 
   useEffect(() => {
-    if (!discos) return;
+    setAlbums([]);
+    setStatus('cargando');
     return onSnapshot(
       discos,
       (snap) => {
@@ -108,17 +112,7 @@ export function useCollection({ canEdit, onMigrated }: { canEdit: boolean; onMig
       },
       () => setStatus('error'),
     );
-  }, []);
-
-  // Modo local: persistimos en el navegador.
-  useEffect(() => {
-    if (discos) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(albums));
-    } catch {
-      // Sin almacenamiento (modo privado, etc.): la colección vive mientras dure la pestaña.
-    }
-  }, [albums]);
+  }, [discos]);
 
   useEffect(() => {
     try {
@@ -130,43 +124,28 @@ export function useCollection({ canEdit, onMigrated }: { canEdit: boolean; onMig
 
   const sorted = useMemo(() => sortAlbums(albums, sort), [albums, sort]);
 
-  const add = useCallback((album: Album) => {
-    if (discos) void setDoc(doc(discos, album.id), album);
-    else setAlbums((prev) => [...prev.filter((a) => a.id !== album.id), album]);
-  }, []);
-
-  const remove = useCallback((id: string) => {
-    if (discos) void deleteDoc(doc(discos, id));
-    else setAlbums((prev) => prev.filter((a) => a.id !== id));
-  }, []);
-
-  const update = useCallback((id: string, patch: Partial<Album>) => {
-    if (discos) void updateDoc(doc(discos, id), patch);
-    else setAlbums((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
-  }, []);
+  const add = useCallback((album: Album) => void setDoc(doc(discos, album.id), album), [discos]);
+  const remove = useCallback((id: string) => void deleteDoc(doc(discos, id)), [discos]);
+  const update = useCallback(
+    (id: string, patch: Partial<Album>) => void updateDoc(doc(discos, id), patch),
+    [discos],
+  );
 
   /** Suma los discos importados; si un disco ya estaba, gana la versión importada. */
   const importMany = useCallback(async (incoming: Album[]) => {
-    if (!discos) {
-      setAlbums((prev) => {
-        const ids = new Set(incoming.map((a) => a.id));
-        return [...prev.filter((a) => !ids.has(a.id)), ...incoming];
-      });
-      return;
-    }
     // Firestore acepta hasta 500 escrituras por lote.
     for (let i = 0; i < incoming.length; i += 400) {
       const batch = writeBatch(db);
       for (const album of incoming.slice(i, i + 400)) batch.set(doc(discos, album.id), album);
       await batch.commit();
     }
-  }, []);
+  }, [discos]);
 
-  // La primera vez que el dueño entra, sube la colección que tenía guardada en este navegador.
-  // El localStorage no se borra: queda como copia.
+  // La primera vez que el dueño entra, sube la colección que tenía guardada en este navegador
+  // (de cuando la discoteca vivía solo en el localStorage). El localStorage no se borra: queda como copia.
   const migrating = useRef(false);
   useEffect(() => {
-    if (!discos || !canEdit || status !== 'lista' || migrating.current) return;
+    if (!canEdit || status !== 'lista' || migrating.current) return;
     let local: Album[];
     try {
       if (localStorage.getItem(MIGRATED_KEY)) return;

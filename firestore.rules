@@ -1,19 +1,56 @@
 rules_version = '2';
 
-// La discoteca es pública para leer; solo el dueño puede escribir.
-// OWNER_UID tiene que coincidir con el de src/config.ts.
+// Cada uno tiene su discoteca: lectura pública, solo el dueño la edita.
+// - usuarios/{handle} → { uid }: el nombre de la URL (#/mana). Se reserva una vez y no se cambia.
+// - perfiles/{uid}    → { handle, nombre, creadoAt }: se crea junto con su nombre, en el mismo lote.
+// - discotecas/{uid}/discos/{id de Spotify}
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isOwner(ownerId) {
-      return request.auth != null
-        && request.auth.uid == ownerId
-        && ownerId == 'rK4orgfeviV2Fx5BMO7XF2g3SSG3';
+    function signedAs(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // Cómo quedan los documentos después del lote que se está escribiendo.
+    function perfilAfter(uid) {
+      return getAfter(/databases/$(database)/documents/perfiles/$(uid));
+    }
+
+    function usuarioAfter(handle) {
+      return getAfter(/databases/$(database)/documents/usuarios/$(handle));
+    }
+
+    function validNombre(data) {
+      return data.nombre is string && data.nombre.size() > 0 && data.nombre.size() <= 40;
+    }
+
+    match /usuarios/{handle} {
+      allow read: if true;
+      // Misma regla que src/lib/handles.ts. "mana" ya estaba antes de que hubiera usuarios.
+      allow create: if signedAs(request.resource.data.uid)
+        && request.resource.data.keys().hasOnly(['uid'])
+        && handle.matches('^[a-z0-9][a-z0-9-]{0,22}[a-z0-9]$')
+        && perfilAfter(request.resource.data.uid).data.handle == handle
+        && (handle != 'mana' || request.resource.data.uid == 'rK4orgfeviV2Fx5BMO7XF2g3SSG3');
+    }
+
+    match /perfiles/{uid} {
+      allow read: if true;
+      allow create: if signedAs(uid)
+        && request.resource.data.handle is string
+        && usuarioAfter(request.resource.data.handle).data.uid == uid
+        && validNombre(request.resource.data)
+        && request.resource.data.creadoAt is number;
+      // El nombre de la URL no se cambia: así cada uno tiene uno solo.
+      allow update: if signedAs(uid)
+        && request.resource.data.handle == resource.data.handle
+        && request.resource.data.creadoAt == resource.data.creadoAt
+        && validNombre(request.resource.data);
     }
 
     match /discotecas/{ownerId}/discos/{discoId} {
       allow read: if true;
-      allow delete: if isOwner(ownerId);
-      allow create, update: if isOwner(ownerId)
+      allow delete: if signedAs(ownerId);
+      allow create, update: if signedAs(ownerId)
         && request.resource.data.id == discoId
         && request.resource.data.title is string
         && request.resource.data.artist is string;
