@@ -15,7 +15,7 @@ npm test
 - **Una discoteca por persona:** cualquiera entra con Google y arma la suya, en `…/discoteca/#/su-nombre`. La portada te lleva a la tuya, o te ofrece crearla.
 - **Persistencia:** Firestore, con caché offline. Lectura pública; cada uno edita solo lo suyo (`firestore.rules`).
   - `usuarios/{handle}` → `{ uid }`: el nombre de la URL. Se reserva una vez y no se cambia; `mana` está reservado para la discoteca original (`RESERVED_HANDLES` en `src/config.ts`).
-  - `perfiles/{uid}` → `{ handle, nombre, creadoAt }`: se crea en el mismo lote que su nombre. Acá irían los ajustes por usuario ([PERSONALIZACION.md](PERSONALIZACION.md)).
+  - `perfiles/{uid}` → `{ handle, nombre, creadoAt, ajustes }`: se crea en el mismo lote que su nombre. En `ajustes` va lo que cada uno personaliza; por ahora, los colores (`tema`). Ver [PERSONALIZACION.md](PERSONALIZACION.md).
   - `discotecas/{uid}/discos/{id de Spotify}`: los discos.
 
 ## Deploy

@@ -3,13 +3,15 @@ import { AddDisc } from './components/AddDisc';
 import { Cabinet } from './components/Cabinet';
 import { CaseViewer } from './components/CaseViewer';
 import { LuckyDialog } from './components/LuckyDialog';
+import { ThemeDialog } from './components/ThemeDialog';
 import { parseCollection, useCollection } from './lib/collection';
 import { signIn, signInErrorMessage, signOutUser } from './lib/firebase';
 import { loadLuckyFilters, saveLuckyFilters, type LuckyFilters } from './lib/lucky';
 import { useMetadataBackfill } from './lib/metadata';
 import { looksLikeSpotify } from './lib/spotify';
 import { countryName } from './sources/countries';
-import { hrefFor, type Profile } from './lib/users';
+import { DEFAULT_TEMA, isTema, useTema, type Tema } from './lib/themes';
+import { hrefFor, saveTema, type Profile } from './lib/users';
 import type { Album, SortMode } from './lib/types';
 import type { User } from 'firebase/auth';
 
@@ -57,6 +59,16 @@ export function Discoteca({ ownerUid, owner, user, mine }: Props) {
   const [adding, setAdding] = useState<{ value: string } | null>(null);
   const [newId, setNewId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Los colores son del dueño: se ven igual para todos. Mientras el dueño elige o guarda, se ve
+  // el que eligió, hasta que el perfil vuelve del servidor con el valor nuevo.
+  const savedTema: Tema = isTema(owner?.ajustes?.tema) ? owner.ajustes.tema : DEFAULT_TEMA;
+  const [previewTema, setPreviewTema] = useState<Tema | null>(null);
+  const [themeOpen, setThemeOpen] = useState(false);
+  useEffect(() => {
+    if (!themeOpen && previewTema === savedTema) setPreviewTema(null);
+  }, [themeOpen, previewTema, savedTema]);
+  useTema(previewTema ?? savedTema);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const openIndex = albums.findIndex((a) => a.id === openId);
@@ -133,8 +145,8 @@ export function Discoteca({ ownerUid, owner, user, mine }: Props) {
   }, [owner]);
 
   useEffect(() => {
-    document.body.classList.toggle('locked', !!openAlbum || !!adding || luckyOpen);
-  }, [openAlbum, adding, luckyOpen]);
+    document.body.classList.toggle('locked', !!openAlbum || !!adding || luckyOpen || themeOpen);
+  }, [openAlbum, adding, luckyOpen, themeOpen]);
 
   const step = (delta: number) => {
     if (albums.length === 0 || openIndex < 0) return;
@@ -249,6 +261,17 @@ export function Discoteca({ ownerUid, owner, user, mine }: Props) {
               <>
                 <div className="menu__scrim" onClick={() => setMenuOpen(false)} />
                 <div className="menu__list">
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setThemeOpen(true);
+                      }}
+                    >
+                      Colores…
+                    </button>
+                  )}
                   <button type="button" onClick={exportCollection} disabled={count === 0}>
                     Exportar copia (JSON)
                   </button>
@@ -327,6 +350,25 @@ export function Discoteca({ ownerUid, owner, user, mine }: Props) {
             remove(openAlbum.id);
             setOpenId(null);
             showToast(`Sacaste “${openAlbum.title}”`);
+          }}
+        />
+      )}
+
+      {themeOpen && (
+        <ThemeDialog
+          initial={savedTema}
+          onPreview={setPreviewTema}
+          onClose={() => {
+            setPreviewTema(null);
+            setThemeOpen(false);
+          }}
+          onSave={(tema) => {
+            setPreviewTema(tema);
+            setThemeOpen(false);
+            saveTema(ownerUid, tema).catch(() => {
+              setPreviewTema(null);
+              showToast('No pude guardar los colores');
+            });
           }}
         />
       )}

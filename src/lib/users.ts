@@ -1,7 +1,8 @@
-import { doc, getDoc, onSnapshot, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, updateDoc, writeBatch } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { db } from './firebase';
 import { handleFromHash } from './handles';
+import type { Tema } from './themes';
 
 /**
  * Cada discoteca tiene dos documentos, que se crean juntos y no se pueden reasignar:
@@ -13,6 +14,12 @@ export interface Profile {
   /** Lo que dice la placa: "Discoteca de Mana". */
   nombre: string;
   creadoAt: number;
+  /** Cómo se ve la discoteca, para todos los que la miran. Todo opcional. */
+  ajustes?: Ajustes;
+}
+
+export interface Ajustes {
+  tema?: Tema;
 }
 
 /** `undefined` mientras carga; `null` si no existe. */
@@ -61,11 +68,15 @@ export async function isHandleTaken(handle: string): Promise<boolean> {
 }
 
 /** Reserva el nombre y crea el perfil en una sola escritura. Falla si el nombre ya es de otro. */
-export async function claimHandle(uid: string, handle: string, nombre: string): Promise<void> {
+export async function claimHandle(uid: string, handle: string, nombre: string, ajustes: Ajustes): Promise<void> {
   const batch = writeBatch(db);
   batch.set(doc(db, 'usuarios', handle), { uid });
-  batch.set(doc(db, 'perfiles', uid), { handle, nombre, creadoAt: Date.now() } satisfies Profile);
+  batch.set(doc(db, 'perfiles', uid), { handle, nombre, creadoAt: Date.now(), ajustes } satisfies Profile);
   await batch.commit();
+}
+
+export async function saveTema(uid: string, tema: Tema): Promise<void> {
+  await updateDoc(doc(db, 'perfiles', uid), { 'ajustes.tema': tema });
 }
 
 /** La discoteca que pide la URL (`#/mana`), o `null` en la portada. */

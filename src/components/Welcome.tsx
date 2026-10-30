@@ -3,7 +3,9 @@ import type { User } from 'firebase/auth';
 import { RESERVED_HANDLES } from '../config';
 import { signIn, signInErrorMessage } from '../lib/firebase';
 import { isValidHandle, toHandle } from '../lib/handles';
+import { DEFAULT_TEMA, useTema, type Tema } from '../lib/themes';
 import { claimHandle, hrefFor, isHandleTaken, type Profile } from '../lib/users';
+import { ThemePicker } from './ThemePicker';
 
 type Props =
   | { mode: 'cargando' }
@@ -82,6 +84,8 @@ function Crear({ user }: { user: User }) {
   const [nombre, setNombre] = useState(firstName);
   const [handle, setHandle] = useState(reserved ?? toHandle(firstName));
   const [handleTouched, setHandleTouched] = useState(!!reserved);
+  const [tema, setTema] = useState<Tema>(DEFAULT_TEMA);
+  useTema(tema);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -97,7 +101,7 @@ function Crear({ user }: { user: User }) {
     try {
       if (await isHandleTaken(finalHandle)) throw new Error('tomado');
       // Al crearse el perfil, App te lleva sola a la discoteca nueva.
-      await claimHandle(user.uid, finalHandle, nombre.trim());
+      await claimHandle(user.uid, finalHandle, nombre.trim(), { tema });
     } catch (e) {
       setError(
         (e as Error).message === 'tomado' || (e as { code?: string }).code === 'permission-denied'
@@ -139,6 +143,11 @@ function Crear({ user }: { user: User }) {
           />
           <span className="welcome__url">{url}</span>
         </label>
+        <div className="welcome__field">
+          Colores
+          <ThemePicker value={tema} onChange={setTema} />
+          <span className="welcome__url">Los podés cambiar cuando quieras desde el menú ⋯</span>
+        </div>
         {error && <p className="dialog__error">{error}</p>}
         <div className="dialog__actions">
           <button type="submit" className="btn" disabled={saving}>

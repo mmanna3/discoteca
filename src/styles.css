@@ -6,9 +6,16 @@
   --brass-2: #b08a43;
   --spotify: #1ed760;
 
+  /* Tema "clásica": madera de los 90. Los otros temas pisan estas variables (más abajo). */
+  --glow: rgba(255, 190, 115, 0.2);
+  --wood-hi: #b27747;
   --wood-light: #9a643a;
+  --wood-mid: #93603a;
   --wood: #7b4a28;
+  --wood-low: #5a3319;
   --wood-dark: #4f2c16;
+  --wood-deep: #3d2210;
+  --back-top: #160c06;
   --back-panel: #1d1009;
 
   --frame: clamp(12px, 2.2vw, 22px);
@@ -19,6 +26,63 @@
   --grain-v: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='700'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.11 0.003' numOctaves='3' seed='9'/%3E%3CfeColorMatrix values='0 0 0 0 0.10 0 0 0 0 0.05 0 0 0 0 0.02 0.95 0 0 0 -0.32'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
 
   color-scheme: dark;
+}
+
+/* Temas: mueble laqueado y pared del mismo tono, más oscura para que el texto claro se lea. */
+:root[data-tema='rosa'] {
+  --wall: #351322;
+  --glow: rgba(255, 140, 190, 0.24);
+  --wood-hi: #f5a9c8;
+  --wood-light: #e98db4;
+  --wood-mid: #dc76a3;
+  --wood: #c85d8d;
+  --wood-low: #a64674;
+  --wood-dark: #85365c;
+  --wood-deep: #5f2442;
+  --back-top: #1d0912;
+  --back-panel: #2a0f1c;
+}
+
+:root[data-tema='azul'] {
+  --wall: #0a1330;
+  --glow: rgba(110, 150, 255, 0.2);
+  --wood-hi: #4d72bd;
+  --wood-light: #4062a8;
+  --wood-mid: #345394;
+  --wood: #29457f;
+  --wood-low: #1e3566;
+  --wood-dark: #172a52;
+  --wood-deep: #0f1c3a;
+  --back-top: #050a18;
+  --back-panel: #0a1226;
+}
+
+:root[data-tema='verde'] {
+  --wall: #0e1f16;
+  --glow: rgba(150, 225, 165, 0.17);
+  --wood-hi: #6fab7f;
+  --wood-light: #5e996e;
+  --wood-mid: #4f865e;
+  --wood: #41724f;
+  --wood-low: #325c3e;
+  --wood-dark: #264930;
+  --wood-deep: #1a3322;
+  --back-top: #07120b;
+  --back-panel: #0c1a11;
+}
+
+:root[data-tema='amarillo'] {
+  --wall: #2a2006;
+  --glow: rgba(255, 215, 90, 0.24);
+  --wood-hi: #f4d260;
+  --wood-light: #e8c047;
+  --wood-mid: #d6ab31;
+  --wood: #c19626;
+  --wood-low: #9e781b;
+  --wood-dark: #7f6014;
+  --wood-deep: #5b440d;
+  --back-top: #171003;
+  --back-panel: #221906;
 }
 
 *,
@@ -37,7 +101,7 @@ body {
   font-family: 'Archivo Narrow', 'Arial Narrow', system-ui, sans-serif;
   color: var(--paper);
   background:
-    radial-gradient(ellipse 70% 45% at 50% -8%, rgba(255, 190, 115, 0.2), transparent 70%),
+    radial-gradient(ellipse 70% 45% at 50% -8%, var(--glow), transparent 70%),
     repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.016) 0 2px, transparent 2px 48px),
     var(--wall);
   background-attachment: fixed;
@@ -334,7 +398,7 @@ main {
   border-radius: 5px 5px 3px 3px;
   background:
     var(--grain-h),
-    linear-gradient(180deg, #b27747 0%, #93603a 22%, #7a4a28 55%, #5a3319 100%);
+    linear-gradient(180deg, var(--wood-hi) 0%, var(--wood-mid) 22%, var(--wood) 55%, var(--wood-low) 100%);
   box-shadow:
     0 8px 12px -2px rgba(0, 0, 0, 0.55),
     inset 0 1px 0 rgba(255, 222, 180, 0.45),
@@ -345,7 +409,7 @@ main {
   position: relative;
   background:
     radial-gradient(ellipse 80% 60% at 50% 0%, rgba(255, 200, 140, 0.07), transparent 70%),
-    linear-gradient(180deg, #160c06, var(--back-panel));
+    linear-gradient(180deg, var(--back-top), var(--back-panel));
   box-shadow:
     inset 10px 0 18px -6px rgba(0, 0, 0, 0.75),
     inset -10px 0 18px -6px rgba(0, 0, 0, 0.75);
@@ -357,7 +421,7 @@ main {
   border-radius: 2px;
   background:
     var(--grain-h),
-    linear-gradient(180deg, #8a5532, #5b331a 70%, #3d2210);
+    linear-gradient(180deg, var(--wood-mid), var(--wood-low) 70%, var(--wood-deep));
   box-shadow: inset 0 1px 0 rgba(255, 222, 180, 0.3), 0 14px 22px -8px rgba(0, 0, 0, 0.8);
 }
 
@@ -382,7 +446,7 @@ main {
   margin: 0 calc(-1 * var(--shelf-pad));
   background:
     var(--grain-h),
-    linear-gradient(180deg, #b47a4a 0, #93603a 3px, #7a4a28 55%, #603619 100%);
+    linear-gradient(180deg, var(--wood-hi) 0, var(--wood-mid) 3px, var(--wood) 55%, var(--wood-low) 100%);
   box-shadow:
     0 10px 14px -6px rgba(0, 0, 0, 0.85),
     inset 0 1px 0 rgba(255, 225, 185, 0.5);
@@ -1303,6 +1367,73 @@ main {
   font-weight: 400;
   color: rgba(42, 30, 22, 0.6);
   overflow-wrap: anywhere;
+}
+
+/* Selector de colores: una miniatura del mueble por tema. */
+.themes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 10px;
+}
+
+.theme {
+  display: grid;
+  gap: 6px;
+  padding: 6px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(42, 30, 22, 0.18);
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.theme:hover {
+  transform: translateY(-1px);
+}
+
+.theme.is-active {
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+.theme__wall {
+  display: grid;
+  place-items: center;
+  height: 70px;
+  border-radius: 8px;
+}
+
+.theme__cabinet {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 4px;
+  width: 54%;
+  height: 76%;
+  padding: 4px;
+  border-radius: 3px;
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.5);
+}
+
+.theme__shelf {
+  border-radius: 1px;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.welcome__field {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Para ver los colores en vivo detrás del diálogo. */
+.dialog--clear .dialog__backdrop {
+  background: rgba(8, 5, 3, 0.25);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* ───────────── Avisos y animaciones ───────────── */

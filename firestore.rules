@@ -2,7 +2,7 @@ rules_version = '2';
 
 // Cada uno tiene su discoteca: lectura pública, solo el dueño la edita.
 // - usuarios/{handle} → { uid }: el nombre de la URL (#/mana). Se reserva una vez y no se cambia.
-// - perfiles/{uid}    → { handle, nombre, creadoAt }: se crea junto con su nombre, en el mismo lote.
+// - perfiles/{uid}    → { handle, nombre, creadoAt, ajustes? }: se crea junto con su nombre, en el mismo lote.
 // - discotecas/{uid}/discos/{id de Spotify}
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -23,6 +23,15 @@ service cloud.firestore {
       return data.nombre is string && data.nombre.size() > 0 && data.nombre.size() <= 40;
     }
 
+    // Ajustes de la discoteca. Mismos temas que src/lib/themes.ts.
+    function validAjustes(data) {
+      return !data.keys().hasAny(['ajustes'])
+        || (data.ajustes is map
+          && data.ajustes.keys().hasOnly(['tema'])
+          && (!data.ajustes.keys().hasAny(['tema'])
+            || data.ajustes.tema in ['clasica', 'rosa', 'azul', 'verde', 'amarillo']));
+    }
+
     match /usuarios/{handle} {
       allow read: if true;
       // Misma regla que src/lib/handles.ts. "mana" ya estaba antes de que hubiera usuarios.
@@ -39,12 +48,14 @@ service cloud.firestore {
         && request.resource.data.handle is string
         && usuarioAfter(request.resource.data.handle).data.uid == uid
         && validNombre(request.resource.data)
+        && validAjustes(request.resource.data)
         && request.resource.data.creadoAt is number;
       // El nombre de la URL no se cambia: así cada uno tiene uno solo.
       allow update: if signedAs(uid)
         && request.resource.data.handle == resource.data.handle
         && request.resource.data.creadoAt == resource.data.creadoAt
-        && validNombre(request.resource.data);
+        && validNombre(request.resource.data)
+        && validAjustes(request.resource.data);
     }
 
     match /discotecas/{ownerId}/discos/{discoId} {

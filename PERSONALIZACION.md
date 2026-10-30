@@ -1,22 +1,23 @@
 # Personalización por usuario
 
-Idea para más adelante: que cada uno pueda ajustar su discoteca. Todavía no está hecho.
+Que cada uno pueda ajustar su discoteca. Ya está hecho el **color** (clásica, rosa, azul, verde y amarillo): se elige al crear la discoteca y después en el menú ⋯ → Colores. Lo demás son ideas.
 
-## Dónde se guardaría
+## Dónde se guarda
 
-Cada usuario ya tiene un perfil en `perfiles/{uid}` (`handle`, `nombre`, `creadoAt`). Los ajustes irían ahí mismo, en un campo `ajustes`:
+Cada usuario tiene un perfil en `perfiles/{uid}` (`handle`, `nombre`, `creadoAt`). Los ajustes van ahí mismo, en el campo `ajustes`:
 
 ```ts
 interface Ajustes {
-  madera?: 'clara' | 'nogal' | 'negra' | 'blanca';
-  tamanoDisco?: 'chico' | 'mediano' | 'grande';
+  tema?: 'clasica' | 'rosa' | 'azul' | 'verde' | 'amarillo'; // hecho
+  tamanoDisco?: 'chico' | 'mediano' | 'grande'; // idea
   // …
 }
 ```
 
 - **Lectura pública**, como los discos. Hace falta para que quien entra a `#/mana` vea el mueble como lo armó mana.
 - **Cada campo es opcional.** Si falta, se usa el valor de hoy, así que las discotecas que ya existen no cambian.
-- **Las reglas ya lo permiten a medias.** El dueño puede actualizar su perfil, pero no el `handle` ni `creadoAt`. Cuando agreguemos `ajustes`, hay que validar sus valores en `firestore.rules`.
+- **Cada ajuste nuevo se valida en `firestore.rules`** (`validAjustes`): hoy solo se acepta `tema`, con uno de los cinco valores. El dueño puede actualizar su perfil, pero no el `handle` ni `creadoAt`.
+- **Un tema nuevo** se agrega en `src/lib/themes.ts`, en `:root[data-tema]` de `src/styles.css` y en `validAjustes`.
 
 Hay que separar dos cosas:
 
@@ -29,10 +30,10 @@ Contestá abajo de cada una, como te salga.
 
 ### Sobre el mueble
 
-1. **Color del mueble:** ¿lo pensás como "tipos de madera" (pino, nogal, roble, wengué), como colores libres con un selector, o como unos pocos estilos armados (madera de los 90, laqueado negro, melamina blanca de IKEA)?
+1. **Más colores:** ya hay cinco temas. ¿Sumarías "tipos de madera" (pino, nogal, roble, wengué), colores libres con un selector, u otros estilos armados (laqueado negro, melamina blanca de IKEA)?
    >
 
-2. **El fondo:** ¿también se tendría que poder cambiar la pared de atrás del mueble, o solo el mueble?
+2. **El fondo:** hoy la pared va con el mueble. ¿Querrías elegirlos por separado?
    >
 
 3. **La placa de bronce:** ¿alcanza con "Discoteca de Mana", o te gustaría poder escribir lo que quieras ("Los discos del Tano", "Bunker")?
