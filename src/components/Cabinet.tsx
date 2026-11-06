@@ -5,6 +5,8 @@ import { Spine } from './Spine';
 interface Props {
   albums: Album[];
   loading?: boolean;
+  /** Hay una búsqueda activa: si no hay discos, no es que la discoteca esté vacía. */
+  filtered?: boolean;
   openId: string | null;
   newId: string | null;
   /** Disco resaltado por la ruleta de "Toca toca, la suerte es loca". */
@@ -66,7 +68,7 @@ function packShelves(items: Item[], available: number, spineW: number): Item[][]
   return shelves.filter((s) => s.length > 0);
 }
 
-export function Cabinet({ albums, loading = false, openId, newId, highlightId, sectionOf, onOpen, onAdd }: Props) {
+export function Cabinet({ albums, loading = false, filtered = false, openId, newId, highlightId, sectionOf, onOpen, onAdd }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [innerWidth, setInnerWidth] = useState(0);
 
@@ -124,7 +126,11 @@ export function Cabinet({ albums, loading = false, openId, newId, highlightId, s
                   ),
                 )}
                 {albums.length === 0 && !loading && i === 0 &&
-                  (onAdd ? (
+                  (filtered ? (
+                    <div className="shelf__empty shelf__empty--static">
+                      <span>Ningún disco coincide con la búsqueda.</span>
+                    </div>
+                  ) : onAdd ? (
                     <button type="button" className="shelf__empty" onClick={onAdd}>
                       <span>La discoteca está vacía.</span>
                       <span>Pegá el link de un álbum de Spotify para guardar el primero.</span>

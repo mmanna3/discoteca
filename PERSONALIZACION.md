@@ -22,7 +22,7 @@ interface Ajustes {
 Hay que separar dos cosas:
 
 - **Ajustes del dueño:** cómo se ve su mueble para todos (color, tamaño). Van en `perfiles/{uid}.ajustes`.
-- **Preferencias de quien mira:** cómo prefiero ver yo cualquier discoteca (el orden elegido, los filtros de "Toca toca"). Hoy viven en el `localStorage` del navegador y está bien que sigan ahí.
+- **Preferencias de quien mira:** cómo prefiero ver yo cualquier discoteca (el orden elegido). Hoy viven en el `localStorage` del navegador y está bien que sigan ahí.
 
 ## Preguntas para elegir las primeras personalizaciones
 

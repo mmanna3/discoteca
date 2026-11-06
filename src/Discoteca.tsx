@@ -2,11 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AddDisc } from './components/AddDisc';
 import { Cabinet } from './components/Cabinet';
 import { CaseViewer } from './components/CaseViewer';
-import { LuckyDialog } from './components/LuckyDialog';
+import { AdvancedSearch, SearchField, SearchIcon } from './components/Search';
 import { ThemeDialog } from './components/ThemeDialog';
 import { parseCollection, useCollection } from './lib/collection';
 import { signIn, signInErrorMessage, signOutUser } from './lib/firebase';
-import { loadLuckyFilters, saveLuckyFilters, type LuckyFilters } from './lib/lucky';
+import { hasFilters, matchesFilters, matchesQuery, MIN_QUERY_LENGTH, NO_FILTERS, type AlbumFilters } from './lib/filters';
 import { useMetadataBackfill } from './lib/metadata';
 import { looksLikeSpotify } from './lib/spotify';
 import { countryName } from './sources/countries';
@@ -59,6 +59,25 @@ export function Discoteca({ ownerUid, owner, user, mine }: Props) {
   const [adding, setAdding] = useState<{ value: string } | null>(null);
   const [newId, setNewId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
+
+  // Búsqueda: la lupa abre el campo y, desde ahí, la búsqueda avanzada. Al cerrarla vuelve a verse todo.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [filters, setFilters] = useState<AlbumFilters>(NO_FILTERS);
+  const refocusLupa = useRef(false);
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    setAdvancedOpen(false);
+    setQuery('');
+    setFilters(NO_FILTERS);
+  }, []);
+  const visible = useMemo(
+    () => albums.filter((a) => matchesQuery(a, query) && matchesFilters(a, filters)),
+    [albums, query, filters],
+  );
+  const isFiltering = query.trim().length >= MIN_QUERY_LENGTH || hasFilters(filters);
 
   // Los colores son del dueño: se ven igual para todos. Mientras el dueño elige o guarda, se ve
   // el que eligió, hasta que el perfil vuelve del servidor con el valor nuevo.
@@ -71,8 +90,9 @@ export function Discoteca({ ownerUid, owner, user, mine }: Props) {
   useTema(previewTema ?? savedTema);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const openIndex = albums.findIndex((a) => a.id === openId);
-  const openAlbum = openIndex >= 0 ? albums[openIndex] : null;
+  // Sigue abierto aunque, al editarlo, deje de cumplir la búsqueda; las flechas recorren lo que se ve.
+  const openAlbum = albums.find((a) => a.id === openId) ?? null;
+  const openIndex = visible.findIndex((a) => a.id === openId);
   const existingIds = useMemo(() => new Set(albums.map((a) => a.id)), [albums]);
   const knownCountries = useMemo(
     () => [...new Set(albums.map((a) => a.country).filter((c): c is string => !!c))],
@@ -83,10 +103,8 @@ export function Discoteca({ ownerUid, owner, user, mine }: Props) {
     [albums],
   );
 
-  // "Toca toca, la suerte es loca": elegís filtros, una ruleta recorre los lomos que los cumplen,
-  // se va frenando y abre el elegido.
-  const [luckyOpen, setLuckyOpen] = useState(false);
-  const [luckyFilters, setLuckyFilters] = useState<LuckyFilters>(loadLuckyFilters);
+  // "Toca toca, la suerte es loca": una ruleta recorre los lomos de toda la discoteca, se va
+  // frenando y abre el elegido.
   const [litId, setLitId] = useState<string | null>(null);
   const rolling = useRef(false);
   const lastLucky = useRef<string | null>(null);
@@ -94,11 +112,11 @@ export function Discoteca({ ownerUid, owner, user, mine }: Props) {
     const candidates = pool.length > 1 ? pool.filter((a) => a.id !== exclude) : pool;
     return candidates[Math.floor(Math.random() * candidates.length)];
   };
-  const tocaToca = (pool: Album[], filters: LuckyFilters) => {
-    setLuckyOpen(false);
-    setLuckyFilters(filters);
-    saveLuckyFilters(filters);
+  const tocaToca = () => {
+    const pool = albums;
     if (pool.length === 0 || rolling.current) return;
+    // Sortea entre todos: si había una búsqueda, se cierra para que la ruleta se vea en el mueble.
+    closeSearch();
     const chosen = randomFrom(pool, lastLucky.current);
     lastLucky.current = chosen.id;
     if (pool.length < 3 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -145,12 +163,26 @@ export function Discoteca({ ownerUid, owner, user, mine }: Props) {
   }, [owner]);
 
   useEffect(() => {
-    document.body.classList.toggle('locked', !!openAlbum || !!adding || luckyOpen || themeOpen);
-  }, [openAlbum, adding, luckyOpen, themeOpen]);
+    document.body.classList.toggle('locked', !!openAlbum || !!adding || themeOpen);
+  }, [openAlbum, adding, themeOpen]);
+
+  const closeSearchAndRefocus = useCallback(() => {
+    refocusLupa.current = true;
+    closeSearch();
+  }, [closeSearch]);
+
+  // Escape cierra la búsqueda, salvo que haya algo abierto encima.
+  useEffect(() => {
+    if (!searchOpen || openAlbum || adding || themeOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeSearchAndRefocus();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [searchOpen, openAlbum, adding, themeOpen, closeSearchAndRefocus]);
 
   const step = (delta: number) => {
-    if (albums.length === 0 || openIndex < 0) return;
-    setOpenId(albums[(openIndex + delta + albums.length) % albums.length].id);
+    if (visible.length === 0) return;
+    const from = openIndex < 0 ? 0 : openIndex + delta;
+    setOpenId(visible[(from + visible.length) % visible.length].id);
   };
 
   const onSave = (album: Album) => {
@@ -205,23 +237,70 @@ export function Discoteca({ ownerUid, owner, user, mine }: Props) {
           <span className="plaque__screw" />
         </div>
         <div className="topbar__tools">
-          <span className="topbar__count">
-            {count} {count === 1 ? 'disco' : 'discos'}
+          <span className="topbar__count" aria-live="polite">
+            {isFiltering ? `${visible.length} de ${count}` : count} {count === 1 ? 'disco' : 'discos'}
           </span>
-          <div className="segmented" role="group" aria-label="Ordenar">
-            {SORTS.map((s) => (
-              <button
-                key={s.value}
-                type="button"
-                className={sort === s.value ? 'is-active' : ''}
-                aria-pressed={sort === s.value}
-                onClick={() => setSort(s.value)}
-              >
-                {s.label}
-              </button>
-            ))}
+          <div className="menu">
+            <button
+              type="button"
+              className="btn btn--ghost btn--sort"
+              aria-expanded={sortOpen}
+              onClick={() => setSortOpen((o) => !o)}
+            >
+              Orden: {SORTS.find((s) => s.value === sort)?.label}
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {sortOpen && (
+              <>
+                <div className="menu__scrim" onClick={() => setSortOpen(false)} />
+                <div className="menu__list menu__list--sort" role="group" aria-label="Ordenar">
+                  {SORTS.map((s) => (
+                    <button
+                      key={s.value}
+                      type="button"
+                      className={sort === s.value ? 'is-active' : ''}
+                      aria-pressed={sort === s.value}
+                      onClick={() => {
+                        setSort(s.value);
+                        setSortOpen(false);
+                      }}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
-          <button type="button" className="btn btn--luck" onClick={() => setLuckyOpen(true)} disabled={count === 0}>
+          {searchOpen ? (
+            <SearchField
+              query={query}
+              advancedOpen={advancedOpen}
+              advancedActive={advancedOpen || hasFilters(filters)}
+              onQuery={setQuery}
+              onToggleAdvanced={() => setAdvancedOpen((o) => !o)}
+              onClose={closeSearchAndRefocus}
+            />
+          ) : (
+            <button
+              ref={(el) => {
+                if (el && refocusLupa.current) {
+                  refocusLupa.current = false;
+                  el.focus();
+                }
+              }}
+              type="button"
+              className="btn btn--ghost btn--icon"
+              aria-label="Buscar"
+              title="Buscar"
+              onClick={() => setSearchOpen(true)}
+            >
+              <SearchIcon />
+            </button>
+          )}
+          <button type="button" className="btn btn--luck" onClick={tocaToca} disabled={count === 0}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <rect x="3" y="3" width="18" height="18" rx="4" fill="none" stroke="currentColor" strokeWidth="2" />
               <circle cx="8" cy="8" r="1.6" fill="currentColor" />
@@ -233,8 +312,14 @@ export function Discoteca({ ownerUid, owner, user, mine }: Props) {
             Toca toca, la suerte es loca
           </button>
           {canEdit && (
-            <button type="button" className="btn" onClick={() => setAdding({ value: '' })}>
-              + Guardar disco
+            <button
+              type="button"
+              className="btn btn--icon"
+              aria-label="Guardar disco"
+              title="Guardar disco"
+              onClick={() => setAdding({ value: '' })}
+            >
+              +
             </button>
           )}
           {user === null && (
@@ -313,13 +398,15 @@ export function Discoteca({ ownerUid, owner, user, mine }: Props) {
             />
           </div>
         </div>
+        {searchOpen && advancedOpen && <AdvancedSearch albums={albums} filters={filters} onChange={setFilters} />}
       </header>
 
       {status === 'error' && <div className="notice notice--error">No pude leer la discoteca de la base de datos.</div>}
 
       <main>
         <Cabinet
-          albums={albums}
+          albums={visible}
+          filtered={isFiltering}
           loading={status === 'cargando'}
           openId={openAlbum?.id ?? null}
           newId={newId}
@@ -338,7 +425,7 @@ export function Discoteca({ ownerUid, owner, user, mine }: Props) {
       {openAlbum && (
         <CaseViewer
           album={openAlbum}
-          position={`${openIndex + 1} de ${albums.length}`}
+          position={openIndex >= 0 ? `${openIndex + 1} de ${visible.length}` : 'Fuera de la búsqueda'}
           readOnly={!canEdit}
           knownGenres={knownGenres}
           knownCountries={knownCountries}
@@ -371,10 +458,6 @@ export function Discoteca({ ownerUid, owner, user, mine }: Props) {
             });
           }}
         />
-      )}
-
-      {luckyOpen && (
-        <LuckyDialog albums={albums} initial={luckyFilters} onSpin={tocaToca} onClose={() => setLuckyOpen(false)} />
       )}
 
       {adding && canEdit && (
